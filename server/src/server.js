@@ -2,29 +2,39 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import OpenAI from "openai";
-import mongoose from "mongoose"; // ✅ Added for the DB test route
+import mongoose from "mongoose";
 import { connectDB } from "./config.js";
 
 // ✅ Import routes
 import userRoutes from "./routes/userRoutes.js";
 import interviewRoutes from "./routes/interviewRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
-import resumeRoutes from "./routes/resumeRoutes.js"; // ✅ Resume parsing route
+import resumeRoutes from "./routes/resumeRoutes.js";
 
 dotenv.config();
 
-// ✅ Connect to MongoDB (Local MongoDB via Compass)
+// ✅ Connect to MongoDB (Atlas or local depending on .env)
 connectDB();
 
 const app = express();
 app.use(express.json());
 
-// ✅ Enable CORS for your frontend (Vite usually runs on port 5173)
+// ✅ CORS configuration
+const allowedOrigins = [
+  "http://localhost:5173", // for local development (Vite)
+  "https://ai-interview-bot.vercel.app", // your Vercel frontend (update when deployed)
+];
+
 app.use(
   cors({
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST"],
-    allowedHeaders: ["Content-Type"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error("CORS policy violation"), false);
+    },
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -33,7 +43,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// ✅ Chat Endpoint (for general chatbot communication)
+// ✅ Chat endpoint
 app.post("/api/chat", async (req, res) => {
   try {
     const { message } = req.body;
@@ -58,13 +68,13 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-// ✅ Mount all route modules
+// ✅ Mount all routes
 app.use("/api/user", userRoutes);
 app.use("/api/interview", interviewRoutes);
 app.use("/api/upload", uploadRoutes);
-app.use("/api/resume", resumeRoutes); // ✅ Resume route for PDF parsing + AI insight
+app.use("/api/resume", resumeRoutes);
 
-// 🧪 TEMP: Test MongoDB connection (You can remove this later)
+// 🧪 MongoDB test route (optional)
 app.post("/api/testdb", async (req, res) => {
   try {
     const { name } = req.body;
@@ -78,9 +88,9 @@ app.post("/api/testdb", async (req, res) => {
   }
 });
 
-// ✅ Default route
+// ✅ Default root route
 app.get("/", (req, res) => {
-  res.send("✅ AI Interview Bot Backend is running...");
+  res.send("✅ AI Interview Bot Backend is running successfully on Render!");
 });
 
 // ✅ Start server
