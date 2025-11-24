@@ -27,18 +27,28 @@ export default function ResumeAnalysis() {
   const [resumeText, setResumeText] = useState("");
 
   useEffect(() => {
-    // Check if resume is already stored in localStorage
     const storedResume = localStorage.getItem("uploadedResumeText");
     if (storedResume) {
       setResumeText(storedResume);
-      analyzeResume(storedResume); // auto-analyze
+      analyzeResume(storedResume);
     }
   }, []);
+
+  const startInterview = (roundType) => {
+  navigate(`/interview-session/${roundType}`, {
+    state: {
+      role: roleTitle,
+      resumeText: resumeText,
+      round: roundType
+    }
+  });
+};
 
   const extractTextFromPDF = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     let text = "";
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
@@ -50,13 +60,11 @@ export default function ResumeAnalysis() {
 
   const extractTextFromDocx = async (file) => {
     const arrayBuffer = await file.arrayBuffer();
-    const textDecoder = new TextDecoder("utf-8");
-    return textDecoder.decode(arrayBuffer);
+    const decoder = new TextDecoder("utf-8");
+    return decoder.decode(arrayBuffer);
   };
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
+  const handleFileChange = (e) => setFile(e.target.files[0]);
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
@@ -73,12 +81,15 @@ export default function ResumeAnalysis() {
         throw new Error("Unsupported file format");
       }
 
-      localStorage.setItem("uploadedResumeText", text); // store resume
+      localStorage.setItem("uploadedResumeText", text);
       setResumeText(text);
       analyzeResume(text);
     } catch (err) {
-      console.error("Error analyzing resume:", err);
-      setAnalysis({ suggestions: ["⚠️ Failed to analyze resume."], matchScore: 0 });
+      console.error(err);
+      setAnalysis({
+        suggestions: ["⚠️ Failed to analyze resume."],
+        matchScore: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -95,207 +106,76 @@ export default function ResumeAnalysis() {
     let matchScore = 85;
 
     if (role.toLowerCase().includes("developer")) {
-      if (!lower.includes("react")) {
-        suggestions.push("Add React.js experience to strengthen your frontend profile.");
-        matchScore -= 8;
-      }
-      if (!lower.includes("javascript")) {
-        suggestions.push("Include JavaScript or TypeScript in your skill set.");
-        matchScore -= 8;
-      }
-      if (!lower.includes("project")) {
-        suggestions.push("Showcase key projects that demonstrate coding expertise.");
-        matchScore -= 5;
-      }
-    }
-
-    if (role.toLowerCase().includes("designer")) {
-      if (!lower.includes("figma")) {
-        suggestions.push("Mention design tools such as Figma or Adobe XD.");
-        matchScore -= 10;
-      }
-      if (!lower.includes("portfolio")) {
-        suggestions.push("Add a link to your design portfolio for credibility.");
-        matchScore -= 10;
-      }
+      if (!lower.includes("react")) matchScore -= 8, suggestions.push("Add React.js experience.");
+      if (!lower.includes("javascript")) matchScore -= 8, suggestions.push("Include JavaScript.");
     }
 
     if (role.toLowerCase().includes("manager")) {
-      if (!lower.includes("lead")) {
-        suggestions.push("Emphasize leadership or project management experience.");
-        matchScore -= 8;
-      }
-      if (!lower.includes("communication")) {
-        suggestions.push("Highlight communication and team coordination skills.");
-        matchScore -= 5;
-      }
+      if (!lower.includes("lead")) matchScore -= 8, suggestions.push("Highlight leadership skills.");
     }
 
     if (suggestions.length === 0)
-      suggestions.push("✅ Excellent! Your resume aligns well with the chosen role.");
+      suggestions.push("✅ Resume aligns well with the role.");
 
     return { suggestions, matchScore: Math.max(matchScore, 40) };
   };
 
   const handleDownloadReport = () => {
+    if (!analysis) return;
+
     const doc = new jsPDF();
-    const marginLeft = 20;
-    let y = 20;
-
-    doc.setFontSize(20);
-    doc.setTextColor(33, 150, 243);
-    doc.text("Interview Companion", marginLeft, y);
-    y += 10;
-
-    doc.setFontSize(12);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Resume Analysis Report - Role: ${roleTitle}`, marginLeft, y);
-    y += 10;
-
-    doc.setDrawColor(33, 150, 243);
-    doc.line(marginLeft, y, 190, y);
-    y += 10;
-
-    doc.setFontSize(14);
-    doc.setTextColor(34, 197, 94);
-    doc.text(`Match Score: ${analysis.matchScore}%`, marginLeft, y);
-    y += 10;
-
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.text("Suggestions:", marginLeft, y);
-    y += 8;
-
-    doc.setTextColor(80, 80, 80);
-    const lines = doc.splitTextToSize(
-      analysis.suggestions.map((s, i) => `${i + 1}. ${s}`).join("\n\n"),
-      170
-    );
-    doc.text(lines, marginLeft, y);
-
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(10);
-    doc.text("Generated by Interview Companion © 2025", marginLeft, 280);
+    doc.text(`Resume Analysis - ${roleTitle}`, 10, 10);
+    doc.text(`Match Score: ${analysis.matchScore}%`, 10, 20);
+    analysis.suggestions.forEach((s, i) => {
+      doc.text(`${i + 1}. ${s}`, 10, 30 + i * 10);
+    });
 
     doc.save(`Resume_Analysis_${roleTitle}.pdf`);
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 relative">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 text-gray-500 hover:text-blue-500 transition"
-        >
+    <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 relative">
+
+        <button onClick={() => navigate(-1)} className="absolute top-4 left-4">
           <ArrowLeft size={22} />
         </button>
 
-        <h1 className="text-3xl font-bold text-center text-gray-800 mb-4">
-          Resume Analysis
-        </h1>
-        <p className="text-center text-gray-600 mb-6">
-          Role Selected:{" "}
-          <span className="font-semibold text-blue-600">{roleTitle}</span>
+        <h1 className="text-xl font-bold text-center mb-4">Resume Analysis</h1>
+        <p className="text-center mb-6">
+          Role: <span className="text-blue-600 font-semibold">{roleTitle}</span>
         </p>
 
-        {/* Upload Section */}
         {!resumeText && (
-          <form onSubmit={handleAnalyze} className="flex flex-col items-center">
-            <label
-              htmlFor="resume"
-              className="w-full border-2 border-dashed border-blue-400 rounded-xl py-10 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-50 transition"
-            >
-              <FileText size={40} className="text-blue-500 mb-3" />
-              <p className="text-gray-700 mb-2">
-                {file ? file.name : "Click or drag file to upload"}
-              </p>
-              <p className="text-sm text-gray-500">(PDF or DOCX format)</p>
-              <input
-                type="file"
-                id="resume"
-                accept=".pdf,.doc,.docx"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              type="submit"
-              disabled={!file || loading}
-              className={`mt-6 px-8 py-3 rounded-xl font-semibold text-white shadow-md transition ${
-                file && !loading
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90"
-                  : "bg-gray-400 cursor-not-allowed"
-              }`}
-            >
-              {loading ? (
-                <Loader2 className="animate-spin mr-2 inline" />
-              ) : (
-                "Analyze Resume"
-              )}
+          <form onSubmit={handleAnalyze} className="text-center">
+            <input type="file" onChange={handleFileChange} />
+            <motion.button type="submit" className="mt-4 px-6 py-2 bg-indigo-600 text-white rounded-xl">
+              {loading ? "Analyzing..." : "Analyze Resume"}
             </motion.button>
           </form>
         )}
 
-        {/* Analysis Result */}
         {analysis && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-8 bg-gray-50 border border-gray-200 rounded-xl p-6 text-gray-800"
-          >
-            <h2 className="text-xl font-semibold text-blue-600 mb-3">
-              Resume Match: {analysis.matchScore}%
-            </h2>
-            <ul className="list-disc pl-6 space-y-2">
-              {analysis.suggestions.map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
+          <>
+            <h2 className="mt-4">Match: {analysis.matchScore}%</h2>
+            <ul className="list-disc pl-6">
+              {analysis.suggestions.map((s, i) => <li key={i}>{s}</li>)}
             </ul>
 
-            <div className="flex justify-between mt-6 flex-wrap gap-3">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleDownloadReport}
-                className="flex items-center gap-2 px-6 py-2 rounded-xl bg-green-500 text-white font-semibold hover:bg-green-600 transition"
-              >
-                <Download size={18} /> Download Report
-              </motion.button>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => startInterview("technical")} className="bg-blue-500 text-white px-4 py-2 rounded-xl">
+                <Brain /> Technical
+              </button>
 
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate("/technical")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600"
-                >
-                  <Brain size={18} /> Technical Round
-                </motion.button>
+              <button onClick={() => startInterview("managerial")} className="bg-indigo-500 text-white px-4 py-2 rounded-xl">
+                <Briefcase /> Managerial
+              </button>
 
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate("/managerial")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600"
-                >
-                  <Briefcase size={18} /> Managerial Round
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate("/hr")}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-500 text-white hover:bg-pink-600"
-                >
-                  <Heart size={18} /> HR Round
-                </motion.button>
-              </div>
+              <button onClick={() => startInterview("hr")} className="bg-pink-500 text-white px-4 py-2 rounded-xl">
+                <Heart /> HR
+              </button>
             </div>
-          </motion.div>
+          </>
         )}
       </div>
     </div>

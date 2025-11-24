@@ -1,14 +1,17 @@
 // src/App.jsx
 import React from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
-// 🧩 Layouts and Components
+// ✅ IMPORTANT: Interview session page (where AI questions should appear)
+import InterviewSession from "./pages/InterviewSession.jsx";
+
+// Layouts & Components
 import MainLayout from "./layouts/MainLayout.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import ChatBot from "./components/ChatBot.jsx";
 
-// 🏠 Pages
+// Pages
 import Home from "./pages/Home.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Interview from "./pages/Interview.jsx";
@@ -18,7 +21,7 @@ import UploadResume from "./pages/UploadResume.jsx";
 import ResumeAnalysis from "./pages/ResumeAnalysis.jsx";
 import Profile from "./pages/Profile.jsx";
 
-// 🎯 Rounds / Prep Pages
+// Rounds
 import TechnicalRound from "./pages/TechnicalRound.jsx";
 import ManagerialRound from "./pages/ManagerialRound.jsx";
 import HRRound from "./pages/HRRound.jsx";
@@ -26,63 +29,17 @@ import HRRound from "./pages/HRRound.jsx";
 export default function App() {
   const location = useLocation();
 
-  // ✨ Animation variants for smooth page transitions
-  const pageVariants = {
-    initial: { opacity: 0, y: 40 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -40 },
-  };
-
-  const transition = { duration: 0.5, ease: "easeInOut" };
-
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* 🌐 PUBLIC ROUTES */}
-        <Route
-          path="/home"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={transition}
-            >
-              <Home />
-            </motion.div>
-          }
-        />
 
-        <Route
-          path="/signup"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={transition}
-            >
-              <Signup />
-            </motion.div>
-          }
-        />
+        {/* ✅ DEFAULT REDIRECT */}
+        <Route path="/" element={<Navigate to="/home" replace />} />
 
-        <Route
-          path="/login"
-          element={
-            <motion.div
-              variants={pageVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={transition}
-            >
-              <Login />
-            </motion.div>
-          }
-        />
+        {/* ✅ PUBLIC ROUTES */}
+        <Route path="/home" element={<Home />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
 
         {/* 🔒 PROTECTED ROUTES */}
         <Route
@@ -92,154 +49,44 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          {/* 🧭 Dashboard */}
-          <Route
-            path="/dashboard"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <Dashboard />
-              </motion.div>
-            }
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
 
-          {/* 📤 Resume Upload */}
-          <Route
-            path="/uploadresume/:title"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <UploadResume />
-              </motion.div>
-            }
-          />
+          {/* 💬 Chat manual page ONLY when user clicks Chat in sidebar */}
+          <Route path="/chat" element={<ChatBot />} />
 
-          {/* 📊 Resume Analysis */}
-          <Route
-            path="/resumeanalysis/:roleTitle"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <ResumeAnalysis />
-              </motion.div>
-            }
-          />
+          {/* 📄 Resume Flow */}
+          <Route path="/uploadresume/:title" element={<UploadResume />} />
+          <Route path="/resumeanalysis/:roleTitle" element={<ResumeAnalysis />} />
 
-          {/* 🎤 Interview Page */}
-          <Route
-            path="/interview/:roleTitle"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <Interview />
-              </motion.div>
-            }
-          />
+          /* =====================================================
+             ✅ INTERVIEW SESSION (REAL AI MOCK INTERVIEW PAGE)
+             ResumeAnalysis buttons MUST navigate to this route
+          ===================================================== */
+          <Route path="/interview-session/:roundType" element={<InterviewSession />} />
 
-          {/* 💬 ChatBot Page */}
-          <Route
-            path="/chat"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <ChatBot />
-              </motion.div>
-            }
-          />
 
-          {/* 👤 Profile Page */}
-          <Route
-            path="/profile"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <Profile />
-              </motion.div>
-            }
-          />
-
-          {/* 🧠 Technical Round */}
-          <Route
-            path="/technical"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <TechnicalRound />
-              </motion.div>
-            }
-          />
-
-          {/* 💼 Managerial Round */}
-          <Route
-            path="/managerial"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <ManagerialRound />
-              </motion.div>
-            }
-          />
-
-          {/* ❤️ HR Round */}
-          <Route
-            path="/hr"
-            element={
-              <motion.div
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                transition={transition}
-              >
-                <HRRound />
-              </motion.div>
-            }
-          />
+          {/* ❌ These are static intro pages only */}
+          <Route path="/technical" element={<TechnicalRound />} />
+          <Route path="/managerial" element={<ManagerialRound />} />
+          <Route path="/hr" element={<HRRound />} />
         </Route>
-
-        {/* 🏠 DEFAULT REDIRECT */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
       </Routes>
     </AnimatePresence>
   );
 }
+
+/* ======================== IMPORTANT ========================
+WHY YOU WERE REDIRECTED TO CHAT ❌
+------------------------------------------------------------
+1. Your InterviewSession route was missing OR mismatched.
+2. Some buttons were navigating to /chat instead of /interview-session.
+3. Sidebar Chat is separate and should not be used for interview.
+
+NOW FLOW IS ✅:
+Dashboard → Upload Resume → Resume Analysis →
+Click Technical/Managerial/HR → /interview-session ✅
+AI questions appear there ✅
+
+Chat page is ONLY for free chat.
+============================================================== */

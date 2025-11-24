@@ -1,23 +1,38 @@
-import { generateAIQuestions } from "../services/openaiService.js";
+import { generateAIQuestions, evaluateAIAnswer } from "../services/openaiService.js";
 
-export const generateInterview = async (req, res, next) => {
+// Generate Interview
+export const generateInterview = async (req, res) => {
   try {
-    const { jobDescription, resumeText, round, difficulty, companyType } = req.body;
+    const { role, round } = req.body;
 
-    if (!jobDescription && !resumeText)
-      return res.status(400).json({ error: "Missing job description or resume" });
+    if (!role || !round) {
+      return res.status(400).json({ error: "Role and round required" });
+    }
 
-    const questions = await generateAIQuestions({
-      jobDescription,
-      resumeText,
-      round,
-      difficulty,
-      companyType,
+    const questions = await generateAIQuestions(role, round);
+
+    res.json({
+      success: true,
+      questions
     });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to generate interview" });
+  }
+};
 
-    res.status(200).json({ success: true, questions });
-  } catch (err) {
-    console.error("❌ Error in generating questions:", err);
-    next(err);
+// Evaluate Answer
+export const evaluateAnswer = async (req, res) => {
+  try {
+    const { question, answer } = req.body;
+
+    const feedback = await evaluateAIAnswer(question, answer);
+
+    res.json({
+      success: true,
+      feedback
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Evaluation failed" });
   }
 };

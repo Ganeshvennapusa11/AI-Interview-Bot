@@ -13,29 +13,43 @@ export default function Profile() {
   const [avatar, setAvatar] = useState("");
   const [analysisHistory, setAnalysisHistory] = useState([]);
 
-  // Replace with logged-in user’s email (later from auth)
-  const email = "demo@example.com";
+  const storedUser = JSON.parse(localStorage.getItem("user"));
+
+const email = storedUser?.email;
+const name = storedUser?.name;
+const photo = storedUser?.photo;
+
 
   // ✅ Fetch profile + history
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [profileRes, historyRes] = await Promise.all([
-          axios.get(`http://localhost:5000/api/user/profile/${email}`),
-          axios.get(`http://localhost:5000/api/user/history/${email}`),
-        ]);
-        setProfile(profileRes.data);
-        setAbout(profileRes.data.about || "");
-        setAvatar(profileRes.data.avatar || "");
-        setAnalysisHistory(historyRes.data || []);
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [email]);
+  const fetchData = async () => {
+    try {
+      const profileRes = await axios.get(
+        `http://localhost:5000/api/user/profile/${email}`
+      );
+
+      const historyRes = await axios.get(
+        `http://localhost:5000/api/user/history/${email}`
+      );
+
+      setProfile(profileRes.data || {});
+      setAbout(profileRes.data?.about || "");
+      setAvatar(profileRes.data?.avatar || "");
+      setAnalysisHistory(historyRes.data || []);
+    } catch (error) {
+      console.error("API ERROR:", error);
+      setProfile({
+        name: "Guest User",
+        email: email
+      });
+    } finally {
+      setLoading(false); // ✅ ALWAYS stops loader now
+    }
+  };
+
+  fetchData();
+}, [email]);
+
 
   // ✅ Save profile updates
   const handleSave = async () => {
@@ -52,12 +66,14 @@ export default function Profile() {
     }
   };
 
-  if (loading)
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin text-indigo-500" size={32} />
-      </div>
-    );
+if (loading || !profile) {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loader2 className="animate-spin text-indigo-500" size={32} />
+    </div>
+  );
+}
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 p-6">
@@ -78,10 +94,10 @@ export default function Profile() {
           />
           <div>
             <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-              <User className="text-indigo-600" /> {profile.name}
+              <User className="text-indigo-600" /> {name || "User"}
             </h1>
             <p className="text-gray-600 flex items-center gap-1">
-              <Mail className="text-indigo-400" /> {profile.email}
+              <Mail className="text-indigo-400" /> {email}
             </p>
           </div>
         </div>

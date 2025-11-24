@@ -17,7 +17,7 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const navigate = useNavigate();
 
-  // ✅ Auto-redirect if already logged in
+  // ✅ Auto redirect if already logged in
   useEffect(() => {
     if (localStorage.getItem("authToken")) {
       navigate("/dashboard");
@@ -33,16 +33,21 @@ export default function Login() {
     return Object.keys(e).length === 0;
   };
 
+  // ✅ NORMAL LOGIN
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     try {
-      // ✅ Option 1: Simulate successful login
-      // (Replace with real API call when ready)
-      localStorage.setItem("authToken", "sample_token_123");
+      const userData = {
+        name: email.split("@")[0],
+        email: email,
+        photo: ""
+      };
 
-      // ✅ Redirect to dashboard
+      localStorage.setItem("authToken", "sample_token_123");
+      localStorage.setItem("user", JSON.stringify(userData)); 
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err.message);
@@ -50,14 +55,26 @@ export default function Login() {
     }
   };
 
+  // ✅ SOCIAL LOGIN (GOOGLE / FACEBOOK / APPLE)
   const handleSocialLogin = async (type) => {
     try {
-      if (type === "Google") await signInWithGoogle();
-      if (type === "Facebook") await signInWithFacebook();
-      if (type === "Apple") await signInWithApple();
+      let userCredential;
 
-      // ✅ Store token for ProtectedRoute
+      if (type === "Google") userCredential = await signInWithGoogle();
+      if (type === "Facebook") userCredential = await signInWithFacebook();
+      if (type === "Apple") userCredential = await signInWithApple();
+
+      const user = userCredential.user;
+
+      const userData = {
+        name: user.displayName,
+        email: user.email,
+        photo: user.photoURL
+      };
+
       localStorage.setItem("authToken", `${type}_login_token`);
+      localStorage.setItem("user", JSON.stringify(userData)); 
+
       navigate("/dashboard");
     } catch (err) {
       console.error("Social login error:", err.message);
@@ -66,7 +83,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 bg-gradient-to-br from-teal-50 via-white to-cyan-50">
-      {/* Background Particles */}
+
       <Particles
         id="tsparticles"
         className="absolute inset-0 z-0"
@@ -86,7 +103,6 @@ export default function Login() {
         }}
       />
 
-      {/* Header */}
       <header className="absolute top-0 left-0 w-full flex justify-between items-center px-6 py-4 z-10">
         <h1 className="text-teal-700 font-bold text-2xl">Interview Companion</h1>
         <button
@@ -97,36 +113,34 @@ export default function Login() {
         </button>
       </header>
 
-      {/* Main Card */}
       <div className="relative z-10 w-full max-w-4xl bg-white shadow-2xl rounded-2xl p-10 border border-blue-100 mt-16 grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left: Form */}
+
+        {/* LOGIN FORM */}
         <motion.div initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
-          <h2 className="text-3xl font-bold text-teal-700 mb-4 text-center md:text-left">
+          <h2 className="text-3xl font-bold text-teal-700 mb-4">
             Welcome Back
           </h2>
 
           <form className="grid grid-cols-1 gap-5" onSubmit={handleSubmit}>
             <div>
-              <label className="text-gray-700 text-sm font-semibold">Email</label>
+              <label>Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-black rounded-xl bg-white text-black focus:ring-2 focus:ring-teal-400 outline-none"
-                placeholder="you@example.com"
+                className="w-full px-4 py-3 border-2 border-black rounded-xl"
               />
-              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+              {errors.email && <p className="text-red-500">{errors.email}</p>}
             </div>
 
             <div>
-              <label className="text-gray-700 text-sm font-semibold">Password</label>
+              <label>Password</label>
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-black rounded-xl bg-white text-black focus:ring-2 focus:ring-teal-400 outline-none pr-10"
-                  placeholder="Enter your password"
+                  className="w-full px-4 py-3 border-2 border-black rounded-xl"
                 />
                 <button
                   type="button"
@@ -136,55 +150,32 @@ export default function Login() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-              {errors.password && <p className="text-red-500 text-sm">{errors.password}</p>}
             </div>
-
-            {errors.general && (
-              <p className="text-center text-red-500 text-sm">{errors.general}</p>
-            )}
 
             <button
               type="submit"
-              className="py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold shadow-md hover:from-teal-400 hover:to-cyan-400 transition"
+              className="py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl"
             >
               Log In
             </button>
           </form>
-
-          <p className="text-center text-sm text-gray-700 mt-4">
-            Don’t have an account?{" "}
-            <Link to="/signup" className="text-teal-600 font-semibold hover:underline">
-              Sign Up
-            </Link>
-          </p>
         </motion.div>
 
-        {/* Right: Social Login */}
+        {/* SOCIAL LOGIN */}
         <motion.div
           initial={{ x: 40, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
-          className="flex flex-col items-center justify-center gap-4 border-l border-gray-200 pl-6"
+          className="flex flex-col items-center justify-center gap-4"
         >
-          <h3 className="text-gray-800 font-semibold mb-2">Or continue with</h3>
+          <h3>Or continue with</h3>
 
           {["Google", "Facebook", "Apple"].map((provider) => (
             <button
               key={provider}
               onClick={() => handleSocialLogin(provider)}
-              className="w-full flex items-center justify-center gap-3 border-2 border-black rounded-xl py-3 bg-white hover:bg-gray-100 transition transform hover:-translate-y-0.5 shadow-sm"
+              className="w-full border rounded-xl py-3"
             >
-              <img
-                src={
-                  provider === "Google"
-                    ? "https://www.svgrepo.com/show/355037/google.svg"
-                    : provider === "Facebook"
-                    ? "https://www.svgrepo.com/show/475647/facebook-color.svg"
-                    : "https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg"
-                }
-                alt={provider}
-                className="w-5 h-5"
-              />
-              <span className="font-medium text-gray-900">{provider}</span>
+              Continue with {provider}
             </button>
           ))}
         </motion.div>

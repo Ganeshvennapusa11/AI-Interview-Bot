@@ -119,7 +119,7 @@ export default function UploadResume() {
       }
 
       const suggestions = generatePersonalizedSuggestions(roleTitle, text);
-      setAnalysis(suggestions);
+      setAnalysis({ ...suggestions, resumeText: text });
     } catch (err) {
       console.error("Error analyzing resume:", err);
       alert("⚠️ Failed to process resume. Please try again.");
@@ -231,11 +231,10 @@ export default function UploadResume() {
               whileTap={{ scale: 0.95 }}
               type="submit"
               disabled={!file || loading}
-              className={`mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-md transition ${
-                file && !loading
-                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90"
-                  : "bg-gray-400 cursor-not-allowed"
-              }`}
+              className={`mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-md transition ${file && !loading
+                ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90"
+                : "bg-gray-400 cursor-not-allowed"
+                }`}
             >
               {loading ? (
                 <>
@@ -304,9 +303,25 @@ export default function UploadResume() {
                 <Heart size={18} /> HR
               </motion.button>
             </div>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              onClick={() =>
+                navigate("/interview-session/technical", {
+                  state: {
+                    role: roleTitle,
+                    resumeText: analysis.resumeText,
+                  },
+                })
+              }
+              className="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition"
+            >
+              🚀 Start AI Interview
+            </motion.button>
           </motion.div>
+
         )}
       </motion.div>
-    </div>
+    </div >
   );
 }
