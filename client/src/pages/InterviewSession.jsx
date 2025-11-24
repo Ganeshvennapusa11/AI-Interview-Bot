@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function InterviewSession() {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const role = state?.role?.title || "Unknown Role";
+  // Handle both string (from ResumeAnalysis) and object (from other sources) formats
+  const role = typeof state?.role === 'string' ? state.role : (state?.role?.title || "Unknown Role");
   const round = state?.round || "technical";
 
   const [questions, setQuestions] = useState([]);
@@ -216,8 +217,8 @@ export default function InterviewSession() {
                   onClick={submitAnswer}
                   disabled={!answer.trim() || isSubmitting}
                   className={`flex-1 sm:flex-none px-8 py-4 rounded-xl font-semibold text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${!answer.trim() || isSubmitting
-                      ? 'bg-gray-600'
-                      : `bg-gradient-to-r ${getRoundColor()} hover:shadow-2xl`
+                    ? 'bg-gray-600'
+                    : `bg-gradient-to-r ${getRoundColor()} hover:shadow-2xl`
                     }`}
                 >
                   {isSubmitting ? (
