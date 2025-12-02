@@ -1,10 +1,9 @@
 import express from "express";
-import multer from "multer";
-import { uploadResume } from "../controllers/uploadController.js";
+import { resumeUploadMiddleware, uploadResume } from "../controllers/resumeController.js";
 
-const upload = multer({ dest: "uploads/" });
 const router = express.Router();
 
-router.post("/upload", upload.single("resume"), uploadResume);
+// Use the updated resume controller with PDF parsing
+router.post("/upload", resumeUploadMiddleware, uploadResume);
 
 export default router;

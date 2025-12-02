@@ -109,17 +109,30 @@ export default function UploadResume() {
     setLoading(true);
 
     try {
-      let text = "";
-      if (file.name.endsWith(".pdf")) {
-        text = await extractTextFromPDF(file);
-      } else if (file.name.endsWith(".docx") || file.name.endsWith(".doc")) {
-        text = await extractTextFromDocx(file);
-      } else {
-        throw new Error("Unsupported file format");
+      const formData = new FormData();
+      formData.append("resume", file);
+      formData.append("role", roleTitle);
+
+      // Call backend API
+      const response = await fetch("http://localhost:5000/api/resume/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || "Failed to analyze resume");
       }
 
-      const suggestions = generatePersonalizedSuggestions(roleTitle, text);
-      setAnalysis({ ...suggestions, resumeText: text });
+      setAnalysis({
+        matchScore: data.insights.matchScore,
+        suggestions: data.insights.suggestions,
+        opinion: data.insights.opinion,
+        missingKeywords: data.insights.missingKeywords,
+        resumeText: data.insights.resumeText // Backend might not return text back, but we can if needed or just ignore
+      });
+
     } catch (err) {
       console.error("Error analyzing resume:", err);
       alert("⚠️ Failed to process resume. Please try again.");
@@ -256,6 +269,28 @@ export default function UploadResume() {
             <h2 className="text-xl font-semibold text-blue-600 mb-3">
               Resume Match: {analysis.matchScore}%
             </h2>
+
+            {analysis.opinion && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <h3 className="font-semibold text-blue-800 mb-1">AI Opinion:</h3>
+                <p className="text-gray-700 italic">"{analysis.opinion}"</p>
+              </div>
+            )}
+
+            {analysis.missingKeywords && analysis.missingKeywords.length > 0 && (
+              <div className="mb-4">
+                <h3 className="font-semibold text-red-600 mb-2">Missing Keywords:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.missingKeywords.map((kw, i) => (
+                    <span key={i} className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm border border-red-100">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <h3 className="font-semibold text-gray-800 mb-2">Suggestions for Improvement:</h3>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
               {analysis.suggestions.map((s, i) => (
                 <li key={i}>{s}</li>

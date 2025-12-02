@@ -29,14 +29,31 @@ Give short constructive feedback and improvement tips.
     return completion.choices[0].message.content;
 };
 
-export const extractResumeInsights = async (resumeText) => {
+export const extractResumeInsights = async (resumeText, role) => {
+    const prompt = `
+    You are an expert technical recruiter and hiring manager. 
+    Analyze the following resume for the role of "${role}".
+    
+    Resume Content:
+    ${resumeText}
+    
+    Provide the output in the following JSON format ONLY (no markdown, no extra text):
+    {
+        "matchScore": <number between 0-100>,
+        "missingKeywords": [<array of strings>],
+        "opinion": "<short professional opinion on the candidate's suitability>",
+        "suggestions": [<array of strings for improvement>]
+    }
+    `;
+
     const completion = await groq.chat.completions.create({
         model: "llama-3.1-8b-instant",
         messages: [
-            { role: "system", content: "You are an expert resume evaluator." },
-            { role: "user", content: `Analyze this resume and give a short summary:\n${resumeText}` }
-        ]
+            { role: "system", content: "You are an expert resume evaluator. Always respond with valid JSON." },
+            { role: "user", content: prompt }
+        ],
+        response_format: { type: "json_object" }
     });
 
-    return completion.choices[0].message.content;
+    return JSON.parse(completion.choices[0].message.content);
 };

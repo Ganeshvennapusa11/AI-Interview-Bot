@@ -17,13 +17,12 @@ export const uploadResume = async (req, res) => {
     }
 
     const filePath = path.join("uploads", req.file.filename);
-    const dataBuffer = fs.readFileSync(filePath);
-
     // ✅ Use parseResume utility
-    const resumeText = await parseResume(dataBuffer);
+    const resumeText = await parseResume(filePath);
 
     // ✅ Get AI-based insights
-    const insights = await extractResumeInsights(resumeText);
+    const role = req.body.role || "General Software Engineer";
+    const insights = await extractResumeInsights(resumeText, role);
 
     // ✅ Clean up uploaded file
     fs.unlinkSync(filePath);
