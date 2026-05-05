@@ -1,4 +1,3 @@
-// src/pages/UploadResume.jsx
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -12,142 +11,109 @@ import {
   Heart,
   RotateCcw,
 } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
-import * as pdfjsLib from "pdfjs-dist/build/pdf";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min?url";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { jsPDF } from "jspdf";
+import { uploadResume } from "../services/api";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+const MotionDiv = motion.div;
+const MotionButton = motion.button;
+
+const roundTypeMap = {
+  technical: "technical_1_dsa",
+  managerial: "managerial",
+  hr: "hr",
+};
 
 export default function UploadResume() {
+  const { state } = useLocation();
   const navigate = useNavigate();
   const { title: roleTitle } = useParams();
+  const selectedRole =
+    typeof state?.role === "string"
+      ? state.role
+      : state?.role?.title || roleTitle || "General Software Engineer";
 
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [error, setError] = useState("");
+  const [questionStyle, setQuestionStyle] = useState("project_deep");
 
-  // 📄 Extract text from PDF
-  const extractTextFromPDF = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let text = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map((s) => s.str).join(" ");
-      text += pageText + "\n";
-    }
-    return text;
-  };
-
-  // 📄 Extract text from DOCX (simple fallback)
-  const extractTextFromDocx = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const textDecoder = new TextDecoder("utf-8");
-    return textDecoder.decode(arrayBuffer);
-  };
-
-  // 📤 When file selected
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
+    setFile(e.target.files[0] || null);
+    setError("");
   };
 
-  // 🧠 Personalized Analysis
-  const generatePersonalizedSuggestions = (role, resumeText) => {
-    const lower = resumeText.toLowerCase();
-    const suggestions = [];
-    let matchScore = 90;
-
-    if (role.toLowerCase().includes("developer")) {
-      if (!lower.includes("react")) {
-        suggestions.push("Add React.js experience to strengthen your frontend profile.");
-        matchScore -= 10;
-      }
-      if (!lower.includes("javascript")) {
-        suggestions.push("Include JavaScript or TypeScript in your skill set.");
-        matchScore -= 10;
-      }
-      if (!lower.includes("project")) {
-        suggestions.push("Showcase key projects demonstrating your coding expertise.");
-        matchScore -= 5;
-      }
-    }
-
-    if (role.toLowerCase().includes("designer")) {
-      if (!lower.includes("figma")) {
-        suggestions.push("Mention design tools such as Figma or Adobe XD.");
-        matchScore -= 10;
-      }
-      if (!lower.includes("portfolio")) {
-        suggestions.push("Add a link to your design portfolio for credibility.");
-        matchScore -= 10;
-      }
-    }
-
-    if (role.toLowerCase().includes("manager")) {
-      if (!lower.includes("lead")) {
-        suggestions.push("Highlight leadership or project management experience.");
-        matchScore -= 10;
-      }
-      if (!lower.includes("communication")) {
-        suggestions.push("Include communication and coordination skills.");
-        matchScore -= 5;
-      }
-    }
-
-    if (suggestions.length === 0)
-      suggestions.push("✅ Excellent! Your resume aligns well with this role.");
-
-    return { suggestions, matchScore: Math.max(matchScore, 40) };
-  };
-
-  // ⚙️ Handle Resume Upload + Analysis
   const handleUpload = async (e) => {
     e.preventDefault();
     if (!file) return;
+
     setLoading(true);
+    setError("");
 
     try {
       const formData = new FormData();
       formData.append("resume", file);
-      formData.append("role", roleTitle);
+      formData.append("role", selectedRole);
 
-      // Call backend API
-      const response = await fetch("http://localhost:5000/api/resume/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || "Failed to analyze resume");
-      }
-
-      setAnalysis({
-        matchScore: data.insights.matchScore,
-        suggestions: data.insights.suggestions,
-        opinion: data.insights.opinion,
-        missingKeywords: data.insights.missingKeywords,
-        resumeText: data.insights.resumeText // Backend might not return text back, but we can if needed or just ignore
-      });
-
+      const data = await uploadResume(formData);
+      setAnalysis(data.insights);
     } catch (err) {
       console.error("Error analyzing resume:", err);
-      alert("⚠️ Failed to process resume. Please try again.");
+      setError(err.message || "Failed to process resume.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 💾 Download PDF Report (fixed encoding issue)
   const handleDownloadReport = () => {
-    if (!analysis || !analysis.suggestions) return;
+    if (!analysis) return;
 
     const doc = new jsPDF();
     const marginLeft = 20;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxWidth = 170;
     let y = 20;
+
+    const ensureSpace = (neededHeight = 12) => {
+      if (y + neededHeight > pageHeight - 20) {
+        doc.addPage();
+        y = 20;
+      }
+    };
+
+    const addSectionTitle = (title) => {
+      ensureSpace(12);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(25, 55, 109);
+      doc.text(title, marginLeft, y);
+      y += 8;
+    };
+
+    const addWrappedParagraph = (text, options = {}) => {
+      const {
+        font = "helvetica",
+        style = "normal",
+        size = 12,
+        color = [55, 65, 81],
+        gap = 7,
+      } = options;
+
+      doc.setFont(font, style);
+      doc.setFontSize(size);
+      doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(text, maxWidth);
+      ensureSpace(lines.length * gap + 4);
+      doc.text(lines, marginLeft, y);
+      y += lines.length * gap + 3;
+    };
+
+    const addBulletList = (items = []) => {
+      items.forEach((item, index) => {
+        addWrappedParagraph(`${index + 1}. ${item}`);
+      });
+    };
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
@@ -158,52 +124,114 @@ export default function UploadResume() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(12);
     doc.setTextColor(60, 60, 60);
-    doc.text(`Resume Analysis Report - Role: ${roleTitle}`, marginLeft, y);
+    doc.text(`Resume Analysis Report - Role: ${selectedRole}`, marginLeft, y);
     y += 10;
 
     doc.setDrawColor(33, 150, 243);
     doc.line(marginLeft, y, 190, y);
     y += 10;
 
-    doc.setFontSize(14);
-    doc.setTextColor(34, 197, 94);
-    doc.text(`Match Score: ${analysis.matchScore}%`, marginLeft, y);
-    y += 10;
+    addSectionTitle("Screening Summary");
+    addWrappedParagraph(`Match Score: ${analysis.matchScore}%`, {
+      style: "bold",
+      size: 15,
+      color: [34, 197, 94],
+    });
 
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.text("Suggestions:", marginLeft, y);
-    y += 8;
+    if (analysis.opinion) {
+      addWrappedParagraph(`AI Opinion: ${analysis.opinion}`, {
+        color: [17, 24, 39],
+      });
+    }
 
-    const suggestionsText = analysis.suggestions
-      .map((s, i) => `${i + 1}. ${s}`)
-      .join("\n\n");
+    addSectionTitle("Detailed Breakdown");
+    if (analysis.scoreBreakdown?.heuristic) {
+      addWrappedParagraph(
+        `Keyword Coverage: ${analysis.scoreBreakdown.heuristic.keywordCoverage}%`
+      );
+      addWrappedParagraph(
+        `Skill Signals: ${analysis.scoreBreakdown.heuristic.skillDepth}`
+      );
+      addWrappedParagraph(
+        `Project Depth: ${analysis.scoreBreakdown.heuristic.projectDepth}`
+      );
+      addWrappedParagraph(
+        `Internship Signals: ${analysis.scoreBreakdown.heuristic.internshipDepth}`
+      );
+      addWrappedParagraph(
+        `Education Signals: ${analysis.scoreBreakdown.heuristic.educationSignals}`
+      );
+    }
 
-    const lines = doc.splitTextToSize(suggestionsText, 170);
-    doc.text(lines, marginLeft, y);
-    y += lines.length * 7;
+    if (analysis.strengths?.length > 0) {
+      addSectionTitle("Strengths Detected");
+      addBulletList(analysis.strengths);
+    }
 
-    doc.setTextColor(150, 150, 150);
-    doc.setFontSize(10);
-    doc.text("Generated by Interview Companion © 2025", marginLeft, 280);
+    if (analysis.matchedKeywords?.length > 0) {
+      addSectionTitle("Matched Keywords");
+      addWrappedParagraph(analysis.matchedKeywords.join(", "));
+    }
 
-    doc.save(`Resume_Analysis_${roleTitle}.pdf`);
+    if (analysis.missingKeywords?.length > 0) {
+      addSectionTitle("Missing or Weak-Signal Keywords");
+      addWrappedParagraph(analysis.missingKeywords.join(", "));
+    }
+
+    if (analysis.suggestions?.length > 0) {
+      addSectionTitle("Suggestions for Improvement");
+      addBulletList(analysis.suggestions);
+    }
+
+    addSectionTitle("Next Best Actions");
+    addBulletList([
+      "Revise the resume summary to align more clearly with the selected role.",
+      "Highlight stronger technical depth in projects with implementation details and measurable outcomes.",
+      "Add or sharpen missing core skill keywords only where you genuinely have evidence.",
+      "Use the interview rounds in Interview Companion to practice questions based on this screening result.",
+    ]);
+
+    doc.save(`Resume_Analysis_${selectedRole}.pdf`);
   };
 
-  // 🔁 Reset to upload another resume
+  const startInterview = (round) => {
+    const roundType = roundTypeMap[round] || round;
+    const context = {
+      role: roleTitle,
+      roleLabel: selectedRole,
+      roundType,
+      difficulty: "medium",
+      questionStyle,
+      parsedResume: analysis?.parsedResume || {},
+    };
+
+    localStorage.setItem("interviewContext", JSON.stringify(context));
+
+    navigate("/interview-session", {
+      state: {
+        role: selectedRole,
+        round,
+        roundType,
+        questionStyle,
+        resumeText: analysis?.resumeText || "",
+        parsedResume: analysis?.parsedResume || {},
+      },
+    });
+  };
+
   const handleChangeResume = () => {
     setFile(null);
     setAnalysis(null);
+    setError("");
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
-      <motion.div
+      <MotionDiv
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 relative"
       >
-        {/* Back */}
         <button
           onClick={() => navigate(-1)}
           className="absolute top-4 left-4 text-gray-500 hover:text-blue-500 transition"
@@ -216,7 +244,7 @@ export default function UploadResume() {
         </h1>
         <p className="text-center text-gray-600 mb-6">
           Role Selected:{" "}
-          <span className="font-semibold text-blue-600">{roleTitle}</span>
+          <span className="font-semibold text-blue-600">{selectedRole}</span>
         </p>
 
         {!analysis ? (
@@ -239,15 +267,16 @@ export default function UploadResume() {
               />
             </label>
 
-            <motion.button
+            <MotionButton
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               type="submit"
               disabled={!file || loading}
-              className={`mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-md transition ${file && !loading
-                ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90"
-                : "bg-gray-400 cursor-not-allowed"
-                }`}
+              className={`mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white shadow-md transition ${
+                file && !loading
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:opacity-90"
+                  : "bg-gray-400 cursor-not-allowed"
+              }`}
             >
               {loading ? (
                 <>
@@ -258,10 +287,12 @@ export default function UploadResume() {
                   <Upload size={18} /> Upload & Analyze
                 </>
               )}
-            </motion.button>
+            </MotionButton>
+
+            {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
           </form>
         ) : (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-6 bg-gray-50 border border-gray-200 rounded-xl p-6"
@@ -277,12 +308,77 @@ export default function UploadResume() {
               </div>
             )}
 
-            {analysis.missingKeywords && analysis.missingKeywords.length > 0 && (
+            {analysis.scoreBreakdown?.heuristic && (
+              <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50 p-4">
+                <h3 className="mb-3 font-semibold text-emerald-800">
+                  Screening Breakdown
+                </h3>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg bg-white/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-600">
+                      Keyword Coverage
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                      {analysis.scoreBreakdown.heuristic.keywordCoverage}%
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-600">
+                      Skill Signals
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                      {analysis.scoreBreakdown.heuristic.skillDepth}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-600">
+                      Project Depth
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                      {analysis.scoreBreakdown.heuristic.projectDepth}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/80 px-3 py-3">
+                    <p className="text-xs uppercase tracking-wide text-emerald-600">
+                      Internship Signals
+                    </p>
+                    <p className="mt-1 text-lg font-semibold text-slate-800">
+                      {analysis.scoreBreakdown.heuristic.internshipDepth}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {analysis.strengths?.length > 0 && (
               <div className="mb-4">
-                <h3 className="font-semibold text-red-600 mb-2">Missing Keywords:</h3>
+                <h3 className="mb-2 font-semibold text-emerald-700">
+                  Strengths Detected:
+                </h3>
                 <div className="flex flex-wrap gap-2">
-                  {analysis.missingKeywords.map((kw, i) => (
-                    <span key={i} className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm border border-red-100">
+                  {analysis.strengths.map((strength, i) => (
+                    <span
+                      key={`${strength}-${i}`}
+                      className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-sm text-emerald-700"
+                    >
+                      {strength}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {analysis.matchedKeywords?.length > 0 && (
+              <div className="mb-4">
+                <h3 className="mb-2 font-semibold text-cyan-700">
+                  Matched Keywords:
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.matchedKeywords.map((kw, i) => (
+                    <span
+                      key={`${kw}-${i}`}
+                      className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-sm text-cyan-700"
+                    >
                       {kw}
                     </span>
                   ))}
@@ -290,73 +386,94 @@ export default function UploadResume() {
               </div>
             )}
 
-            <h3 className="font-semibold text-gray-800 mb-2">Suggestions for Improvement:</h3>
+            {analysis.missingKeywords?.length > 0 && (
+              <div className="mb-4">
+                <h3 className="font-semibold text-red-600 mb-2">
+                  Missing Keywords:
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {analysis.missingKeywords.map((kw, i) => (
+                    <span
+                      key={`${kw}-${i}`}
+                      className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm border border-red-100"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <h3 className="font-semibold text-gray-800 mb-2">
+              Suggestions for Improvement:
+            </h3>
             <ul className="list-disc pl-6 space-y-2 text-gray-700">
-              {analysis.suggestions.map((s, i) => (
+              {analysis.suggestions?.map((s, i) => (
                 <li key={i}>{s}</li>
               ))}
             </ul>
 
+            <div className="mt-6">
+              <label className="mb-2 block text-sm font-semibold text-gray-800">
+                Interview Style
+              </label>
+              <select
+                value={questionStyle}
+                onChange={(event) => setQuestionStyle(event.target.value)}
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-300"
+              >
+                <option value="standard">Standard</option>
+                <option value="resume_heavy">Resume Heavy</option>
+                <option value="project_deep">Project Deep</option>
+                <option value="fundamentals_deep">Fundamentals Deep</option>
+                <option value="behavioral_sharp">Behavioral Sharp</option>
+              </select>
+            </div>
+
             <div className="flex flex-wrap gap-3 mt-6 justify-between">
-              <motion.button
+              <MotionButton
                 whileHover={{ scale: 1.05 }}
                 onClick={handleDownloadReport}
                 className="flex items-center gap-2 px-6 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600"
               >
                 <Download size={18} /> Download Report
-              </motion.button>
+              </MotionButton>
 
-              <motion.button
+              <MotionButton
                 whileHover={{ scale: 1.05 }}
                 onClick={handleChangeResume}
                 className="flex items-center gap-2 px-6 py-2 rounded-xl bg-yellow-500 text-white hover:bg-yellow-600"
               >
                 <RotateCcw size={18} /> Change Resume
-              </motion.button>
+              </MotionButton>
             </div>
 
             <div className="flex justify-center mt-6 gap-3 flex-wrap">
-              <motion.button
+              <MotionButton
                 whileHover={{ scale: 1.05 }}
-                onClick={() => navigate("/technical")}
+                onClick={() => startInterview("technical")}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600"
               >
                 <Brain size={18} /> Technical
-              </motion.button>
-              <motion.button
+              </MotionButton>
+              <MotionButton
                 whileHover={{ scale: 1.05 }}
-                onClick={() => navigate("/managerial")}
+                onClick={() => startInterview("managerial")}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white hover:bg-indigo-600"
               >
                 <Briefcase size={18} /> Managerial
-              </motion.button>
-              <motion.button
+              </MotionButton>
+              <MotionButton
                 whileHover={{ scale: 1.05 }}
-                onClick={() => navigate("/hr")}
+                onClick={() => startInterview("hr")}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-500 text-white hover:bg-pink-600"
               >
                 <Heart size={18} /> HR
-              </motion.button>
+              </MotionButton>
             </div>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              onClick={() =>
-                navigate("/interview-session/technical", {
-                  state: {
-                    role: roleTitle,
-                    resumeText: analysis.resumeText,
-                  },
-                })
-              }
-              className="mt-6 w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition"
-            >
-              🚀 Start AI Interview
-            </motion.button>
-          </motion.div>
-
+          </MotionDiv>
         )}
-      </motion.div>
-    </div >
+      </MotionDiv>
+    </div>
   );
 }

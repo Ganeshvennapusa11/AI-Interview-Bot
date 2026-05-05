@@ -1,66 +1,111 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  evaluateInterviewAnswer,
+  generateInterviewQuestions,
+} from "../services/api";
+
+const MotionDiv = motion.div;
+
+const roundLabelMap = {
+  technical_1_dsa: "technical",
+  technical_2_fundamentals: "technical",
+  technical_2_projects: "technical",
+  technical: "technical",
+  managerial: "managerial",
+  hr: "hr",
+  full_mock: "full mock",
+};
+
+const roundTypeMap = {
+  technical: "technical_1_dsa",
+  managerial: "managerial",
+  hr: "hr",
+  full_mock: "full_mock",
+};
 
 export default function InterviewSession() {
   const { state } = useLocation();
+  const { roundType } = useParams();
   const navigate = useNavigate();
-  // Handle both string (from ResumeAnalysis) and object (from other sources) formats
-  const role = typeof state?.role === 'string' ? state.role : (state?.role?.title || "Unknown Role");
-  const round = state?.round || "technical";
+
+  const role =
+    typeof state?.role === "string"
+      ? state.role
+      : state?.role?.title || "Unknown Role";
+  const activeRoundType =
+    state?.roundType ||
+    roundTypeMap[state?.round] ||
+    roundTypeMap[roundType] ||
+    roundType ||
+    "technical_1_dsa";
+  const roundLabel =
+    roundLabelMap[activeRoundType] || roundLabelMap[roundType] || "technical";
 
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answer, setAnswer] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [feedback, setFeedback] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
-    loadQuestions();
-  }, []);
+    async function loadQuestions() {
+      setIsLoading(true);
 
-  const loadQuestions = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("http://localhost:5000/api/interview/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, round })
-      });
+      try {
+        const data = await generateInterviewQuestions({
+          role,
+          roundType: activeRoundType,
+          questionStyle: state?.questionStyle || "standard",
+          resumeText: state?.resumeText || "",
+          parsedResume: state?.parsedResume || {},
+        });
 
-      const data = await res.json();
-      setQuestions(data.questions || []);
-    } catch (error) {
-      console.error("Failed to load questions:", error);
-    } finally {
-      setIsLoading(false);
+        setQuestions(data.questions || []);
+      } catch (error) {
+        console.error("Failed to load questions:", error);
+        setQuestions([]);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  };
+
+    loadQuestions();
+  }, [
+    activeRoundType,
+    role,
+    state?.parsedResume,
+    state?.questionStyle,
+    state?.resumeText,
+  ]);
 
   const submitAnswer = async () => {
-    if (!answer.trim()) return;
+    if (!answer.trim() || !questions[currentIndex]) return;
 
     setIsSubmitting(true);
     setShowFeedback(false);
 
     try {
-      const res = await fetch("http://localhost:5000/api/interview/evaluate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question: questions[currentIndex],
-          answer
-        })
+      const data = await evaluateInterviewAnswer({
+        question: questions[currentIndex]?.question,
+        answer,
+        roundType: activeRoundType,
       });
 
-      const data = await res.json();
-      setFeedback(data.feedback);
+      setFeedback({
+        feedback: data.feedback || "Evaluation completed.",
+        evaluation: data.evaluation || null,
+      });
       setShowFeedback(true);
     } catch (error) {
       console.error("Failed to submit answer:", error);
-      setFeedback("Failed to get feedback. Please try again.");
+      setFeedback({
+        feedback: "Failed to get feedback. Please try again.",
+        evaluation: null,
+      });
       setShowFeedback(true);
     } finally {
       setIsSubmitting(false);
@@ -70,99 +115,102 @@ export default function InterviewSession() {
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
       setAnswer("");
-      setFeedback("");
+      setFeedback(null);
       setShowFeedback(false);
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      // Interview completed
-      navigate("/dashboard");
+      setCurrentIndex((prev) => prev + 1);
+      return;
     }
+
+    navigate("/dashboard");
   };
 
-  const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
+  const progress =
+    questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
 
   const getRoundColor = () => {
-    switch (round.toLowerCase()) {
-      case "technical": return "from-blue-500 to-purple-600";
-      case "managerial": return "from-purple-500 to-pink-600";
-      case "hr": return "from-pink-500 to-rose-600";
-      default: return "from-indigo-500 to-purple-600";
-    }
-  };
-
-  const getRoundIcon = () => {
-    switch (round.toLowerCase()) {
-      case "technical": return "💻";
-      case "managerial": return "📊";
-      case "hr": return "👥";
-      default: return "📝";
+    switch (roundLabel.toLowerCase()) {
+      case "technical":
+        return "from-blue-500 to-purple-600";
+      case "managerial":
+        return "from-purple-500 to-pink-600";
+      case "hr":
+        return "from-pink-500 to-rose-600";
+      default:
+        return "from-indigo-500 to-purple-600";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
-      {/* Animated Background Orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }}></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute left-1/4 top-1/4 h-96 w-96 animate-pulse rounded-full bg-purple-500/20 blur-3xl" />
+        <div
+          className="absolute bottom-1/4 right-1/4 h-96 w-96 animate-pulse rounded-full bg-blue-500/20 blur-3xl"
+          style={{ animationDelay: "1s" }}
+        />
       </div>
 
-      <div className="max-w-5xl mx-auto relative z-10">
-        {/* Header Section */}
-        <motion.div
+      <div className="relative z-10 mx-auto max-w-5xl">
+        <MotionDiv
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <button
               onClick={() => navigate("/dashboard")}
-              className="text-white/70 hover:text-white transition-colors flex items-center gap-2 group"
+              className="group flex items-center gap-2 text-white/70 transition-colors hover:text-white"
             >
-              <span className="text-xl group-hover:-translate-x-1 transition-transform">←</span>
+              <span className="text-xl transition-transform group-hover:-translate-x-1">
+                &larr;
+              </span>
               <span>Back to Dashboard</span>
             </button>
 
             <div className="flex items-center gap-3">
-              <span className={`px-4 py-2 rounded-full bg-gradient-to-r ${getRoundColor()} text-white font-semibold text-sm shadow-lg`}>
-                {getRoundIcon()} {round.toUpperCase()}
+              <span
+                className={`rounded-full bg-gradient-to-r px-4 py-2 text-sm font-semibold text-white shadow-lg ${getRoundColor()}`}
+              >
+                {roundLabel.toUpperCase()}
               </span>
             </div>
           </div>
 
-          <div className="backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 p-6 shadow-2xl">
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
+          <div className="rounded-2xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
+            <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">
               {role}
             </h1>
-            <p className="text-white/70 text-lg">
-              {questions.length > 0 ? `Question ${currentIndex + 1} of ${questions.length}` : "Loading interview..."}
+            <p className="text-lg text-white/70">
+              {questions.length > 0
+                ? `Question ${currentIndex + 1} of ${questions.length}`
+                : "Loading interview..."}
             </p>
 
-            {/* Progress Bar */}
-            <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
               <motion.div
-                className={`h-full bg-gradient-to-r ${getRoundColor()} shadow-lg`}
+                className={`h-full bg-gradient-to-r shadow-lg ${getRoundColor()}`}
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               />
             </div>
           </div>
-        </motion.div>
+        </MotionDiv>
 
-        {/* Main Content */}
         {isLoading ? (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 p-12 shadow-2xl text-center"
+            className="rounded-2xl border border-white/20 bg-white/10 p-12 text-center shadow-2xl backdrop-blur-xl"
           >
-            <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-white/20 border-t-white mb-4"></div>
-            <p className="text-white/70 text-lg">Loading your interview questions...</p>
-          </motion.div>
+            <div className="mb-4 inline-block h-16 w-16 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+            <p className="text-lg text-white/70">
+              Loading your interview questions...
+            </p>
+          </MotionDiv>
         ) : questions.length > 0 ? (
           <AnimatePresence mode="wait">
-            <motion.div
+            <MotionDiv
               key={currentIndex}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -170,116 +218,160 @@ export default function InterviewSession() {
               transition={{ duration: 0.3 }}
               className="space-y-6"
             >
-              {/* Question Card */}
-              <div className="backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 p-8 shadow-2xl">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
-                    {currentIndex + 1}
+              <div className="rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-xl font-bold text-white shadow-lg">
+                      {currentIndex + 1}
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wider text-purple-300">
+                        {questions[currentIndex]?.category}
+                      </span>
+                      <span
+                        className={`rounded-lg border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wider ${
+                          questions[currentIndex]?.difficulty?.toLowerCase() ===
+                          "hard"
+                            ? "text-rose-400"
+                            : questions[currentIndex]?.difficulty?.toLowerCase() ===
+                                "medium"
+                              ? "text-amber-400"
+                              : "text-emerald-400"
+                        }`}
+                      >
+                        {questions[currentIndex]?.difficulty}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex-1">
-                    <h2 className="text-2xl font-semibold text-white leading-relaxed">
-                      {questions[currentIndex]}
+                    <h2 className="text-2xl font-semibold leading-relaxed text-white">
+                      {questions[currentIndex]?.question}
                     </h2>
+                    {questions[currentIndex]?.hint && (
+                      <p className="mt-4 text-sm italic text-white/40">
+                        Hint: {questions[currentIndex].hint}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Answer Input */}
-              <div className="backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 p-8 shadow-2xl">
-                <label className="block text-white font-semibold mb-4 text-lg">
+              <div className="rounded-2xl border border-white/20 bg-white/10 p-8 shadow-2xl backdrop-blur-xl">
+                <label className="mb-4 block text-lg font-semibold text-white">
                   Your Answer
                 </label>
                 <textarea
                   value={answer}
-                  onChange={e => setAnswer(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && e.ctrlKey) {
+                  onChange={(event) => setAnswer(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && event.ctrlKey) {
                       submitAnswer();
                     }
                   }}
                   placeholder="Type your answer here... (Ctrl+Enter to submit)"
-                  className="w-full h-48 bg-white/5 border border-white/20 rounded-xl p-4 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
+                  className="h-48 w-full resize-none rounded-xl border border-white/20 bg-white/5 p-4 text-white placeholder-white/40 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-purple-500"
                   disabled={isSubmitting}
                 />
-                <div className="flex items-center justify-between mt-3">
-                  <p className="text-white/50 text-sm">
+                <div className="mt-3 flex items-center justify-between">
+                  <p className="text-sm text-white/50">
                     {answer.length} characters
                   </p>
-                  <p className="text-white/50 text-sm">
+                  <p className="text-sm text-white/50">
                     Tip: Press Ctrl+Enter to submit
                   </p>
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-4">
                 <button
                   onClick={submitAnswer}
                   disabled={!answer.trim() || isSubmitting}
-                  className={`flex-1 sm:flex-none px-8 py-4 rounded-xl font-semibold text-white shadow-lg transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${!answer.trim() || isSubmitting
-                    ? 'bg-gray-600'
-                    : `bg-gradient-to-r ${getRoundColor()} hover:shadow-2xl`
-                    }`}
+                  className={`flex-1 rounded-xl px-8 py-4 font-semibold text-white shadow-lg transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100 sm:flex-none ${
+                    !answer.trim() || isSubmitting
+                      ? "bg-gray-600"
+                      : `bg-gradient-to-r hover:scale-105 hover:shadow-2xl ${getRoundColor()}`
+                  }`}
                 >
-                  {isSubmitting ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                      Evaluating...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <span>✓</span> Submit Answer
-                    </span>
-                  )}
+                  {isSubmitting ? "Evaluating..." : "Submit Answer"}
                 </button>
 
                 <button
                   onClick={nextQuestion}
-                  className="flex-1 sm:flex-none px-8 py-4 rounded-xl font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 shadow-lg transition-all transform hover:scale-105 active:scale-95"
+                  className="flex-1 rounded-xl border border-white/20 bg-white/10 px-8 py-4 font-semibold text-white shadow-lg transition-all hover:scale-105 hover:bg-white/20 active:scale-95 sm:flex-none"
                 >
-                  <span className="flex items-center gap-2">
-                    {currentIndex < questions.length - 1 ? "Skip →" : "Finish Interview"}
-                  </span>
+                  {currentIndex < questions.length - 1
+                    ? "Skip"
+                    : "Finish Interview"}
                 </button>
               </div>
 
-              {/* Feedback Section */}
               <AnimatePresence>
-                {showFeedback && feedback && (
-                  <motion.div
+                {showFeedback && feedback?.feedback && (
+                  <MotionDiv
                     initial={{ opacity: 0, y: 20, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -20, scale: 0.95 }}
                     transition={{ duration: 0.3 }}
-                    className="backdrop-blur-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl border border-emerald-400/30 p-8 shadow-2xl"
+                    className="rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 p-8 shadow-2xl backdrop-blur-xl"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-2xl shadow-lg">
-                        ✨
+                      <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-2xl text-white shadow-lg">
+                        *
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-xl font-bold text-emerald-100 mb-3">
+                        <h3 className="mb-3 text-xl font-bold text-emerald-100">
                           AI Feedback
                         </h3>
-                        <div className="text-white/90 leading-relaxed whitespace-pre-wrap">
-                          {feedback}
+                        <div className="whitespace-pre-wrap leading-relaxed text-white/90">
+                          {feedback.feedback}
                         </div>
+
+                        {feedback.evaluation?.strengths?.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm font-semibold text-emerald-100">
+                              Strengths
+                            </p>
+                            <ul className="mt-2 list-disc pl-5 text-white/85">
+                              {feedback.evaluation.strengths.map(
+                                (item, index) => (
+                                  <li key={`${item}-${index}`}>{item}</li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
+
+                        {feedback.evaluation?.improvements?.length > 0 && (
+                          <div className="mt-4">
+                            <p className="text-sm font-semibold text-emerald-100">
+                              Improvements
+                            </p>
+                            <ul className="mt-2 list-disc pl-5 text-white/85">
+                              {feedback.evaluation.improvements.map(
+                                (item, index) => (
+                                  <li key={`${item}-${index}`}>{item}</li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </motion.div>
+                  </MotionDiv>
                 )}
               </AnimatePresence>
-            </motion.div>
+            </MotionDiv>
           </AnimatePresence>
         ) : (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="backdrop-blur-xl bg-white/10 rounded-2xl border border-white/20 p-12 shadow-2xl text-center"
+            className="rounded-2xl border border-white/20 bg-white/10 p-12 text-center shadow-2xl backdrop-blur-xl"
           >
-            <div className="text-6xl mb-4">😕</div>
-            <p className="text-white/70 text-lg">No questions available. Please try again.</p>
-          </motion.div>
+            <p className="text-lg text-white/70">
+              No questions available. Please try again.
+            </p>
+          </MotionDiv>
         )}
       </div>
     </div>

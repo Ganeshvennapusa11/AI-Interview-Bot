@@ -1,76 +1,43 @@
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { PlusCircle, Search, X, CheckCircle2 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  ArrowRight,
+  BrainCircuit,
+  CheckCircle2,
+  Code2,
+  Cpu,
+  Database,
+  PlusCircle,
+  Search,
+  ServerCog,
+  ShieldCheck,
+  Sparkles,
+  Workflow,
+  X,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { roleTracks } from "../data/roleTracks.js";
+
+const MotionSection = motion.section;
+const MotionDiv = motion.div;
+
+const iconMap = {
+  BrainCircuit,
+  Code2,
+  Cpu,
+  Database,
+  ServerCog,
+  ShieldCheck,
+  Workflow,
+};
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
-
-  const [roles, setRoles] = useState([
-    {
-      id: "FE",
-      title: "Frontend Engineer",
-      desc: "Preparing for UI-rich app interviews",
-      exp: "2 Years",
-      qna: "12 Q&A",
-      date: "1st Oct 2025",
-      skills: "React, CSS, HTML, JavaScript",
-      color: "from-green-100 to-blue-100",
-    },
-    {
-      id: "BE",
-      title: "Backend Engineer",
-      desc: "Focused on scalable service backends",
-      exp: "3 Years",
-      qna: "14 Q&A",
-      date: "1st Oct 2025",
-      skills: "Node.js, Express, MongoDB, REST APIs",
-      color: "from-yellow-100 to-orange-100",
-    },
-    {
-      id: "FS",
-      title: "Full Stack Dev",
-      desc: "Handling both client & server sides",
-      exp: "4 Years",
-      qna: "10 Q&A",
-      date: "1st Oct 2025",
-      skills: "MERN stack, deployment, auth",
-      color: "from-blue-100 to-indigo-100",
-    },
-    {
-      id: "DS",
-      title: "Data Scientist",
-      desc: "Analyzing finance and product datasets",
-      exp: "2 Years",
-      qna: "10 Q&A",
-      date: "1st Oct 2025",
-      skills: "Python, Pandas, ML, SQL",
-      color: "from-rose-100 to-pink-100",
-    },
-    {
-      id: "DEV",
-      title: "DevOps",
-      desc: "Switching to automation-heavy workflows",
-      exp: "5 Years",
-      qna: "12 Q&A",
-      date: "1st Oct 2025",
-      skills: "CI/CD, Docker, AWS, Kubernetes",
-      color: "from-teal-100 to-cyan-100",
-    },
-    {
-      id: "UX",
-      title: "UI/UX Designer",
-      desc: "Mastering product design strategies",
-      exp: "3 Years",
-      qna: "10 Q&A",
-      date: "1st Oct 2025",
-      skills: "Figma, wireframing, accessibility",
-      color: "from-purple-100 to-indigo-100",
-    },
-  ]);
+  const [roles, setRoles] = useState(roleTracks);
 
   const [newRole, setNewRole] = useState({
     id: "",
@@ -80,210 +47,398 @@ export default function Dashboard() {
     qna: "",
     date: "",
     skills: "",
-    color: "from-teal-100 to-cyan-100",
+    accent: "from-cyan-100 via-sky-50 to-white",
+    category: "Custom",
   });
 
-  const filteredRoles = roles.filter((r) =>
-    r.title.toLowerCase().includes(search.toLowerCase())
-  );
+  const filters = ["All", ...new Set(roles.map((role) => role.category))];
 
-  const handleAddRole = (e) => {
-    e.preventDefault();
-    if (newRole.id && newRole.title) {
-      setRoles([...roles, newRole]);
-      setShowModal(false);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2000);
-      setNewRole({
-        id: "",
-        title: "",
-        desc: "",
-        exp: "",
-        qna: "",
-        date: "",
-        skills: "",
-        color: "from-teal-100 to-cyan-100",
-      });
+  const filteredRoles = roles.filter((role) => {
+    const query = search.toLowerCase();
+    const matchesSearch =
+      role.title.toLowerCase().includes(query) ||
+      role.skills.toLowerCase().includes(query) ||
+      role.category.toLowerCase().includes(query);
+
+    const matchesFilter =
+      activeFilter === "All" || role.category === activeFilter;
+
+    return matchesSearch && matchesFilter;
+  });
+
+  const handleAddRole = (event) => {
+    event.preventDefault();
+
+    if (!newRole.id.trim() || !newRole.title.trim()) {
+      return;
     }
+
+    setRoles((prev) => [
+      ...prev,
+      {
+        ...newRole,
+        id: newRole.id.trim().toUpperCase(),
+        title: newRole.title.trim(),
+        desc: newRole.desc.trim() || "Custom technical interview track.",
+        exp: newRole.exp.trim() || "Custom",
+        qna: newRole.qna.trim() || "10 Q&A",
+        date: newRole.date.trim() || "25 Apr 2026",
+        skills: newRole.skills.trim() || "Custom skills",
+        category: newRole.category.trim() || "Custom",
+        icon: "Sparkles",
+      },
+    ]);
+
+    setShowModal(false);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 2000);
+
+    setNewRole({
+      id: "",
+      title: "",
+      desc: "",
+      exp: "",
+      qna: "",
+      date: "",
+      skills: "",
+      accent: "from-cyan-100 via-sky-50 to-white",
+      category: "Custom",
+    });
+  };
+
+  const handleRoleSelect = (role) => {
+    const safeRole = {
+      id: role.id,
+      title: role.title,
+      desc: role.desc,
+      exp: role.exp,
+      qna: role.qna,
+      date: role.date,
+      skills: role.skills,
+      accent: role.accent,
+      category: role.category,
+    };
+
+    navigate("/uploadresume", {
+      state: { role: safeRole },
+    });
+  };
+
+  const handleRoadmapOpen = (roleId) => {
+    navigate(`/roadmap/${roleId}`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 flex flex-col items-center py-16 px-6">
-      <h1 className="text-4xl font-bold text-gray-800 mb-10 text-center">
-        Interview Prep Dashboard
-      </h1>
-
-      {/* Search Bar */}
-      <div className="relative w-full max-w-2xl mb-10">
-        <input
-          type="text"
-          placeholder="Search roles (e.g. Frontend, DevOps)..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-400 outline-none text-gray-700 shadow-md bg-white/90 backdrop-blur-sm"
-        />
-        <Search
-          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-          size={20}
-        />
-      </div>
-
-      {/* Role Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl">
-        {filteredRoles.map((role, index) => (
-          <motion.div
-            key={role.id + index}
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.06, duration: 0.45 }}
-            whileHover={{ scale: 1.03 }}
-            className={`cursor-pointer bg-gradient-to-br ${role.color} rounded-2xl p-6 shadow-lg transition-transform`}
-            // ✅ Navigate to UploadResume
-            onClick={() =>
-              navigate(`/uploadresume/${encodeURIComponent(role.title)}`, {
-                state: { role },
-              })
-            }
-          >
-            <div className="flex items-center gap-4 mb-3">
-              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center font-semibold text-gray-800 shadow">
-                {role.id}
+    <div className="min-h-screen text-slate-800">
+      <div className="mx-auto max-w-7xl">
+        <MotionSection
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="rounded-[2rem] border border-slate-200/80 bg-white/80 p-8 shadow-[0_18px_60px_rgba(148,163,184,0.14)] backdrop-blur-xl md:p-10"
+        >
+          <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-medium text-cyan-700">
+                <Sparkles size={15} />
+                Technical interview workspace
               </div>
-              <h2 className="text-xl font-bold text-gray-800">{role.title}</h2>
+
+              <h1 className="mt-5 max-w-4xl text-4xl font-bold tracking-tight text-slate-950 md:text-5xl">
+                Choose a sharper role track for current engineering interviews
+              </h1>
+
+              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-600">
+                Explore modern roles like SDE, SWE, SRE, AI/ML Engineer,
+                Platform Engineer, Backend Engineer, and Security Engineer.
+                Pick a track, upload your resume, and practice in a more focused way.
+              </p>
+
+              <div className="mt-8 relative max-w-3xl">
+                <input
+                  type="text"
+                  placeholder="Search roles like SDE, SWE, SRE, AI / ML Engineer..."
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="w-full rounded-2xl border border-slate-200 bg-white py-4 pl-12 pr-4 text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-cyan-300"
+                />
+                <Search
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={20}
+                />
+              </div>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                {filters.map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setActiveFilter(filter)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                      activeFilter === filter
+                        ? "bg-slate-900 text-white"
+                        : "border border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:text-slate-900"
+                    }`}
+                  >
+                    {filter}
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className="text-gray-600 mb-3 text-sm">{role.skills}</p>
-            <div className="flex justify-between text-gray-500 text-xs mb-3">
-              <span>{role.exp}</span>
-              <span>{role.qna}</span>
-              <span>{role.date}</span>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                { label: "Role Tracks", value: roles.length.toString(), note: "modern interview paths" },
+                { label: "Round Types", value: "6", note: "technical to HR" },
+                { label: "Resume Context", value: "ON", note: "guided by your profile" },
+                { label: "Target", value: "2026", note: "current hiring trends" },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-[1.6rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-sm"
+                >
+                  <p className="text-sm text-slate-500">{item.label}</p>
+                  <p className="mt-2 text-3xl font-bold text-slate-950">
+                    {item.value}
+                  </p>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-slate-400">
+                    {item.note}
+                  </p>
+                </div>
+              ))}
             </div>
-            <p className="text-gray-700 text-sm font-medium">{role.desc}</p>
-          </motion.div>
-        ))}
+          </div>
+        </MotionSection>
+
+        <section className="mt-10 grid grid-cols-1 gap-8 xl:grid-cols-3">
+          {filteredRoles.map((role, index) => {
+            const Icon = iconMap[role.icon] || Sparkles;
+
+            return (
+              <motion.div
+                key={`${role.id}-${index}`}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04, duration: 0.3 }}
+                whileHover={{ y: -6 }}
+              >
+                <div
+                  className={`group rounded-[2rem] border border-slate-200 bg-gradient-to-br ${role.accent} p-7 shadow-[0_14px_36px_rgba(148,163,184,0.12)] transition`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/80 bg-white/80 shadow-sm">
+                        <span className="text-lg font-bold text-slate-950">
+                          {role.id}
+                        </span>
+                      </div>
+
+                      <div>
+                        <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          <Icon size={13} />
+                          {role.category}
+                        </div>
+
+                        <h2 className="text-[1.9rem] font-bold leading-tight text-slate-950">
+                          {role.title}
+                        </h2>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-600">
+                          {role.skills}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRoleSelect(role)}
+                      className="rounded-full border border-white/80 bg-white/75 p-2 text-slate-500 transition group-hover:text-slate-900"
+                    >
+                      <ArrowRight size={20} />
+                    </button>
+                  </div>
+
+                  <div className="mt-6 grid grid-cols-3 gap-3">
+                    <div className="rounded-2xl border border-white/80 bg-white/72 px-4 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                        Experience
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-800">
+                        {role.exp}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/80 bg-white/72 px-4 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                        Questions
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-800">
+                        {role.qna}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/80 bg-white/72 px-4 py-4">
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
+                        Updated
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-slate-800">
+                        {role.date}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="mt-6 text-base leading-7 text-slate-700">
+                    {role.desc}
+                  </p>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleRoleSelect(role)}
+                      className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                    >
+                      Start With This Role
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRoadmapOpen(role.id)}
+                      className="rounded-2xl border border-slate-300 bg-white/80 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-slate-950"
+                    >
+                      View Roadmap
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+        </section>
+
+        <div className="mt-12 flex justify-center">
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 rounded-2xl bg-slate-950 px-7 py-3.5 font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          >
+            <PlusCircle size={20} />
+            Add Custom Role
+          </button>
+        </div>
       </div>
 
-      {/* Add Role Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setShowModal(true)}
-        className="mt-12 flex items-center gap-2 bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-3 rounded-xl font-semibold shadow-lg transition"
-      >
-        <PlusCircle size={20} />
-        Add New Role
-      </motion.button>
-
-      {/* Add Role Modal */}
       <AnimatePresence>
         {showModal && (
-          <motion.div
-            className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50"
+          <MotionDiv
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-sm"
           >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+            <MotionDiv
+              initial={{ scale: 0.96, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl relative"
+              exit={{ scale: 0.96, opacity: 0 }}
+              className="relative w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl"
             >
               <button
                 onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 text-gray-500 hover:text-red-500 transition"
+                className="absolute right-5 top-5 text-slate-400 transition hover:text-rose-500"
               >
                 <X size={22} />
               </button>
-              <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Add New Role
+
+              <h3 className="text-center text-2xl font-bold text-slate-900">
+                Add Custom Role
               </h3>
-              <form onSubmit={handleAddRole} className="space-y-4">
+
+              <p className="mt-2 text-center text-sm text-slate-500">
+                Add a role that matches your exact target job.
+              </p>
+
+              <form onSubmit={handleAddRole} className="mt-6 space-y-4">
                 <input
                   type="text"
-                  placeholder="Role ID (e.g., UX, BE)"
+                  placeholder="Role ID (e.g. MLE)"
                   value={newRole.id}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, id: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, id: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <input
                   type="text"
                   placeholder="Role Title"
                   value={newRole.title}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, title: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, title: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
+                />
+                <input
+                  type="text"
+                  placeholder="Category"
+                  value={newRole.category}
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, category: event.target.value })
+                  }
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <input
                   type="text"
                   placeholder="Skills"
                   value={newRole.skills}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, skills: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, skills: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <input
                   type="text"
                   placeholder="Experience"
                   value={newRole.exp}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, exp: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, exp: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <input
                   type="text"
                   placeholder="Questions"
                   value={newRole.qna}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, qna: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, qna: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
-                />
-                <input
-                  type="text"
-                  placeholder="Last Updated"
-                  value={newRole.date}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, date: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <textarea
+                  rows={4}
                   placeholder="Description"
                   value={newRole.desc}
-                  onChange={(e) =>
-                    setNewRole({ ...newRole, desc: e.target.value })
+                  onChange={(event) =>
+                    setNewRole({ ...newRole, desc: event.target.value })
                   }
-                  className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-teal-400 outline-none resize-none"
+                  className="w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-300"
                 />
                 <button
                   type="submit"
-                  className="w-full bg-teal-600 text-white py-3 rounded-xl font-semibold hover:bg-teal-700 transition"
+                  className="w-full rounded-2xl bg-cyan-600 py-3 font-semibold text-white transition hover:bg-cyan-700"
                 >
                   Save Role
                 </button>
               </form>
-            </motion.div>
-          </motion.div>
+            </MotionDiv>
+          </MotionDiv>
         )}
       </AnimatePresence>
 
-      {/* Toast */}
       <AnimatePresence>
         {showToast && (
-          <motion.div
+          <MotionDiv
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-10 right-10 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3"
+            className="fixed bottom-10 right-10 flex items-center gap-3 rounded-2xl bg-emerald-500 px-6 py-3 text-white shadow-lg"
           >
-            <CheckCircle2 size={22} />
+            <CheckCircle2 size={20} />
             <span className="font-medium">Role added successfully!</span>
-          </motion.div>
+          </MotionDiv>
         )}
       </AnimatePresence>
     </div>

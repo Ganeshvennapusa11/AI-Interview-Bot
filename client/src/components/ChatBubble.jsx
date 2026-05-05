@@ -1,12 +1,14 @@
 import { motion } from "framer-motion";
 
+const MotionDiv = motion.div;
+
 
 export default function ChatBubble({ role, content }) {
 const isUser = role === "user";
 
 
 return (
-<motion.div
+<MotionDiv
 initial={{ opacity: 0, y: 10 }}
 animate={{ opacity: 1, y: 0 }}
 className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
@@ -19,6 +21,6 @@ ${isUser
 >
 {content}
 </div>
-</motion.div>
+</MotionDiv>
 );
 }

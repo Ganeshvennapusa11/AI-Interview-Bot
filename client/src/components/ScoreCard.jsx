@@ -1,9 +1,11 @@
 import { motion } from "framer-motion";
 
+const MotionDiv = motion.div;
+
 
 export default function ScoreCard({ score, strengths, weaknesses, improvedAnswer }) {
 return (
-<motion.div
+<MotionDiv
 initial={{ opacity: 0, scale: 0.95 }}
 animate={{ opacity: 1, scale: 1 }}
 className="bg-white rounded-2xl shadow-lg p-6 border mt-6"
@@ -48,6 +50,6 @@ Suggested Improved Answer
 </p>
 </div>
 )}
-</motion.div>
+</MotionDiv>
 );
 }
