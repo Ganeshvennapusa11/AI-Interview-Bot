@@ -46,6 +46,7 @@ export const generateInterview = async (req, res) => {
       questionCount = 5,
       difficulty = "medium",
       questionStyle = "standard",
+      adaptiveContext = {},
     } = req.body;
 
     const selectedRound = normalizeRoundType(roundType || round);
@@ -79,6 +80,7 @@ export const generateInterview = async (req, res) => {
       questionCount: normalizedQuestionCount,
       difficulty: String(difficulty).toLowerCase(),
       questionStyle: String(questionStyle).toLowerCase(),
+      adaptiveContext,
     });
 
     return res.json({

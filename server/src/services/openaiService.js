@@ -61,6 +61,41 @@ function getQuestionStyleGuidance(questionStyle) {
   return map[questionStyle] || map.standard;
 }
 
+function getCompanyInterviewGuidance(companyType = "General") {
+  const normalizedCompany = normalizeToken(companyType);
+  const map = [
+    {
+      matchers: ["google"],
+      guidance:
+        "Use a Google-style bar: structured problem solving, scalable systems thinking, clarity under ambiguity, tradeoffs, clean fundamentals, and data-driven decisions.",
+    },
+    {
+      matchers: ["amazon"],
+      guidance:
+        "Use an Amazon-style bar: ownership, customer obsession, dive deep, bias for action, measurable impact, operational excellence, and STAR-format behavioral probing.",
+    },
+    {
+      matchers: ["tcs"],
+      guidance:
+        "Use a TCS-style bar: fundamentals, communication, project explanation, role readiness, service delivery mindset, adaptability, and practical coding/database concepts.",
+    },
+    {
+      matchers: ["infosys"],
+      guidance:
+        "Use an Infosys-style bar: fundamentals, training readiness, problem solving, communication, project clarity, OOP/DBMS/SDLC basics, and learnability.",
+    },
+  ];
+
+  const matched = map.find((item) =>
+    item.matchers.some((matcher) => normalizedCompany.includes(matcher))
+  );
+
+  return (
+    matched?.guidance ||
+    "Use a general product/company interview style with realistic follow-ups, practical constraints, and role-specific evaluation."
+  );
+}
+
 function normalizeQuestions(items = []) {
   return items
     .map((item) => {
@@ -460,6 +495,7 @@ export const generateAIQuestions = async ({
   questionCount = 5,
   difficulty = "medium",
   questionStyle = "standard",
+  adaptiveContext = {},
 }) => {
   const resumeSnippet = resumeText.trim().slice(0, 1200);
   const jdSnippet = jobDescription.trim().slice(0, 800);
@@ -472,6 +508,19 @@ export const generateAIQuestions = async ({
   const education = Array.isArray(parsedResume.education)
     ? parsedResume.education.slice(0, 3)
     : [];
+  const previousWeakAreas = Array.isArray(adaptiveContext.weakAreas)
+    ? adaptiveContext.weakAreas.slice(0, 6).join(", ")
+    : "";
+  const previousStrengths = Array.isArray(adaptiveContext.strengths)
+    ? adaptiveContext.strengths.slice(0, 6).join(", ")
+    : "";
+  const askedQuestions = Array.isArray(adaptiveContext.askedQuestions)
+    ? adaptiveContext.askedQuestions.slice(-8).join(" | ")
+    : "";
+  const lastScore =
+    adaptiveContext.lastScore !== undefined
+      ? String(adaptiveContext.lastScore)
+      : "Not available";
 
   const prompt = `
 You are an expert interviewer.
@@ -486,6 +535,7 @@ Experience Level: ${experienceLevel}
 Company Type: ${companyType}
 Round Strategy: ${getRoundStrategy(roundType)}
 Style Guidance: ${getQuestionStyleGuidance(questionStyle)}
+Company Guidance: ${getCompanyInterviewGuidance(companyType)}
 
 Candidate Skills: ${skills.join(", ") || "Not provided"}
 Candidate Projects: ${projects.join(" | ") || "Not provided"}
@@ -494,10 +544,21 @@ Candidate Education: ${education.join(" | ") || "Not provided"}
 Resume Snippet: ${resumeSnippet || "Not provided"}
 Job Description: ${jdSnippet || "Not provided"}
 
+Adaptive Context:
+- Previous Questions Asked: ${askedQuestions || "None"}
+- Last Answer Score: ${lastScore}
+- Previous Strengths: ${previousStrengths || "None"}
+- Weak Areas To Probe Next: ${previousWeakAreas || "None"}
+
 Rules:
 - Tailor the questions to the target role and the candidate context.
 - Do not ask bland generic interview questions that could fit any candidate.
 - Follow the selected Question Style strictly.
+- Order the questions from easier to harder. The first 30-40% should be basic, short, confidence-building questions. The middle should be medium practical questions. The last questions may be longer scenario, architecture, coding, debugging, or design questions.
+- For basic questions, ask concise fundamentals such as "What is authentication?", "What is indexing in a database?", "What is the purpose of middleware in Express?", or "What is the difference between a list and a dictionary?" depending on the role.
+- For medium questions, ask applied prompts that require explanation or code, similar to: "How would you design scalable handling for multiple concurrent conversations with an AI API?" or "Write a Python function to sort transactions by timestamp and group them by payment status."
+- Do not make every question long. Mix question length: short basics first, then 1-2 medium multi-part questions, and only one deep scenario when the question count allows it.
+- If generating 5 questions, use this sequence: Question 1 basic, Question 2 basic-to-applied, Question 3 medium practical, Question 4 medium scenario/code/design, Question 5 medium-plus follow-up or project-depth question.
 - At least 60% of the questions must explicitly connect to the candidate's resume, projects, skills, internships, or likely day-to-day work for the role.
 - If Question Style is "project_deep", at least 80% of the questions should be based on project, implementation, debugging, architecture, scaling, deployment, ownership, or tradeoff discussions.
 - If project or internship context exists, prefer asking about architecture, implementation choices, tradeoffs, debugging, scale, testing, deployment, ownership, metrics, bottlenecks, and lessons learned.
@@ -505,6 +566,9 @@ Rules:
 - Avoid repeated templates like "Tell me about yourself", "What are your strengths and weaknesses", or broad filler unless the round is HR and the candidate context is missing.
 - Keep questions specific, practical, and interview-quality.
 - Make each question meaningfully different from the others.
+- If Weak Areas To Probe Next exists, make the next questions adapt to those gaps without repeating previous questions.
+- If the last score is low, ask a more guided diagnostic question. If it is high, increase depth or ask sharper tradeoff/follow-up questions.
+- Match the company guidance without mentioning this instruction.
 - When useful, include one short hint that nudges the candidate toward structure, not the full answer.
 - Return only JSON in this shape:
 {
