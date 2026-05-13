@@ -1290,7 +1290,7 @@ import { loadFull } from "tsparticles";
 //   // signInWithFacebook,
 //   // signInWithApple,
 // } from "../firebase";
-// import { registerUser, firebaseLogin } from "../services/api";
+import { registerUser } from "../services/api";
 
 const MotionDiv = motion.div;
 const MotionButton = motion.button;
@@ -1307,7 +1307,6 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [socialLoading, setSocialLoading] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
