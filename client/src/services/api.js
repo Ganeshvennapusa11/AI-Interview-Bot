@@ -4,6 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
+  timeout: 20000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -21,10 +22,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const message =
-      error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Something went wrong.";
+      error.code === "ECONNABORTED"
+        ? "The server is taking too long to respond. Please try again in a moment."
+        : error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Something went wrong.";
 
     const normalizedError = new Error(message);
     normalizedError.status = error.response?.status;

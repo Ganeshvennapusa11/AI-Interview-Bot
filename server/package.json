@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --check src/server.js && node --check src/config.js && node --check src/controllers/interviewController.js && node --check src/controllers/resumeController.js && node --check src/controllers/userController.js && node --check src/middleware/authMiddleware.js && node --check src/middleware/errorHandler.js && node --check src/models/User.js && node --check src/routes/interviewRoutes.js && node --check src/routes/resumeRoutes.js && node --check src/routes/userRoutes.js && node --check src/services/firebaseAdmin.js && node --check src/services/groqService.js && node --check src/services/openaiService.js && node --check src/utils/generateToken.js && node --check src/utils/parseResume.js && node --check test-db.js && node --check test-groq.js && node --check test-openai.js"
+    "test": "node --check src/server.js && node --check src/config.js && node --check src/controllers/interviewController.js && node --check src/controllers/resumeController.js && node --check src/controllers/userController.js && node --check src/middleware/authMiddleware.js && node --check src/middleware/errorHandler.js && node --check src/models/User.js && node --check src/routes/interviewRoutes.js && node --check src/routes/resumeRoutes.js && node --check src/routes/userRoutes.js && node --check src/services/emailService.js && node --check src/services/firebaseAdmin.js && node --check src/services/groqService.js && node --check src/services/openaiService.js && node --check src/utils/generateToken.js && node --check src/utils/parseResume.js && node --check test-db.js && node --check test-groq.js && node --check test-openai.js"
   },
   "keywords": [
     "AI",
@@ -30,6 +30,7 @@
     "mammoth": "^1.8.0",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
+    "nodemailer": "^8.0.7",
     "openai": "^4.104.0",
     "pdf-parse": "^2.4.5"
   },

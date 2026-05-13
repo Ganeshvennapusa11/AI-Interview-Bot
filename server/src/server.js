@@ -17,17 +17,26 @@ connectDB();
 
 const app = express();
 
+const configuredOrigins = process.env.FRONTEND_URLS
+  ? process.env.FRONTEND_URLS.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : [];
+
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "https://ai-interview-bot.vercel.app",
+  ...configuredOrigins,
 ];
+
+const isAllowedOrigin = (origin = "") =>
+  allowedOrigins.includes(origin) || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
 
 app.use(helmet());
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || isAllowedOrigin(origin)) {
         return callback(null, true);
       }
 

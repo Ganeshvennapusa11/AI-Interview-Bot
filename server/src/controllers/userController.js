@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
 import { verifyFirebaseToken } from "../services/firebaseAdmin.js";
+import { sendAccountCreatedEmail } from "../services/emailService.js";
 
 const isValidEmail = (email = "") => /^\S+@\S+\.\S+$/.test(email);
 const isStrongPassword = (password = "") =>
@@ -52,6 +53,10 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password,
+    });
+
+    sendAccountCreatedEmail({ to: email, name }).catch((error) => {
+      console.error("Account email failed:", error.message);
     });
 
     return res.status(201).json({
@@ -119,6 +124,10 @@ export const firebaseLogin = async (req, res) => {
         email,
         password: `FirebaseAuth!${decoded.uid}`,
         avatar: decoded.picture || "",
+      });
+
+      sendAccountCreatedEmail({ to: email, name: user.name }).catch((error) => {
+        console.error("Account email failed:", error.message);
       });
     } else if (!user.avatar && decoded.picture) {
       user.avatar = decoded.picture;
