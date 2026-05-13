@@ -47,6 +47,16 @@ export async function registerUser(payload) {
   return response.data;
 }
 
+export async function requestPasswordReset(email) {
+  const response = await api.post("/user/forgot-password", { email });
+  return response.data;
+}
+
+export async function resetPassword(token, password) {
+  const response = await api.post(`/user/reset-password/${token}`, { password });
+  return response.data;
+}
+
 export async function firebaseLogin(idToken) {
   const response = await api.post("/user/firebase-login", { idToken });
   return response.data;

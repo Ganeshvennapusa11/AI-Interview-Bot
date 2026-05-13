@@ -1,7 +1,11 @@
+import crypto from "crypto";
 import User from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
 import { verifyFirebaseToken } from "../services/firebaseAdmin.js";
-import { sendAccountCreatedEmail } from "../services/emailService.js";
+import {
+  sendAccountCreatedEmail,
+  sendPasswordResetEmail,
+} from "../services/emailService.js";
 
 const isValidEmail = (email = "") => /^\S+@\S+\.\S+$/.test(email);
 const isStrongPassword = (password = "") =>
@@ -98,6 +102,98 @@ export const loginUser = async (req, res) => {
   } catch (error) {
     console.error("Login error:", error);
     return res.status(500).json({ message: "Server error during login" });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+
+    if (!email || !isValidEmail(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (user) {
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
+
+      user.passwordResetToken = hashedToken;
+      user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000);
+      await user.save({ validateBeforeSave: false });
+
+      const frontendUrl =
+        process.env.FRONTEND_URL ||
+        process.env.CLIENT_URL ||
+        "http://localhost:5173";
+      const resetUrl = `${frontendUrl.replace(/\/$/, "")}/reset-password/${resetToken}`;
+
+      sendPasswordResetEmail({
+        to: user.email,
+        name: user.name,
+        resetUrl,
+      }).catch((error) => {
+        console.error("Password reset email failed:", error.message);
+      });
+    }
+
+    return res.json({
+      message:
+        "If an account exists for that email, a password reset link has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ message: "Server error while requesting password reset" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const token = req.params.token;
+    const password = req.body.password || "";
+
+    if (!token) {
+      return res.status(400).json({ message: "Reset token is required" });
+    }
+
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters and include uppercase, lowercase, number, and symbol",
+      });
+    }
+
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(token)
+      .digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: new Date() },
+    }).select("+passwordResetToken +passwordResetExpires");
+
+    if (!user) {
+      return res.status(400).json({ message: "Password reset link is invalid or expired" });
+    }
+
+    user.password = password;
+    user.passwordResetToken = "";
+    user.passwordResetExpires = null;
+    await user.save();
+
+    return res.json({
+      message: "Password reset successfully",
+      token: generateToken(user._id),
+      user: serializeUser(user),
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: "Server error while resetting password" });
   }
 };
 

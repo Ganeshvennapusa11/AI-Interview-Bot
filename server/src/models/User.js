@@ -63,6 +63,16 @@ const userSchema = new mongoose.Schema(
       type: [analysisHistorySchema],
       default: [],
     },
+    passwordResetToken: {
+      type: String,
+      default: "",
+      select: false,
+    },
+    passwordResetExpires: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   { timestamps: true }
 );

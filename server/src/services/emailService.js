@@ -75,3 +75,46 @@ export const sendAccountCreatedEmail = async ({ to, name }) => {
   await withTimeout(getTransporter().sendMail(mail));
   return { skipped: false };
 };
+
+export const sendPasswordResetEmail = async ({ to, name, resetUrl }) => {
+  if (!isEmailConfigured()) {
+    return { skipped: true, reason: "SMTP is not configured" };
+  }
+
+  const appName = process.env.APP_NAME || "Interview Companion";
+  const from =
+    process.env.SMTP_FROM ||
+    `"${appName}" <${process.env.SMTP_USER}>`;
+
+  const mail = {
+    from,
+    to,
+    subject: `Reset your ${appName} password`,
+    text: [
+      `Hi ${name || "there"},`,
+      "",
+      `We received a request to reset your ${appName} password.`,
+      "This link is valid for 15 minutes:",
+      resetUrl,
+      "",
+      "If you did not request this, you can safely ignore this email.",
+      "",
+      "Best,",
+      `${appName} Team`,
+    ].join("\n"),
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <h2 style="margin-bottom: 8px;">Reset your password</h2>
+        <p>Hi ${name || "there"},</p>
+        <p>We received a request to reset your ${appName} password.</p>
+        <p>This link is valid for 15 minutes.</p>
+        <p><a href="${resetUrl}" style="display:inline-block;background:#0f172a;color:#ffffff;padding:10px 16px;border-radius:10px;text-decoration:none;">Reset password</a></p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+        <p style="margin-top: 24px;">Best,<br/>${appName} Team</p>
+      </div>
+    `,
+  };
+
+  await withTimeout(getTransporter().sendMail(mail));
+  return { skipped: false };
+};

@@ -82,6 +82,8 @@ app.use(globalLimiter);
 
 app.use("/api/user/login", authLimiter);
 app.use("/api/user/register", authLimiter);
+app.use("/api/user/forgot-password", authLimiter);
+app.use("/api/user/reset-password", authLimiter);
 
 app.use("/api/user", userRoutes);
 app.use("/api/interview", aiLimiter, interviewRoutes);
