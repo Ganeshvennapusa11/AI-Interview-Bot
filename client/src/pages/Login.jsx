@@ -811,8 +811,8 @@ import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 import {
   signInWithGoogle,
-  signInWithFacebook,
-  signInWithApple,
+  // signInWithFacebook,
+  // signInWithApple,
 } from "../firebase";
 import { loginUser, firebaseLogin } from "../services/api";
 
@@ -872,6 +872,38 @@ export default function Login() {
     }
   };
 
+//  const handleSocialLogin = async (type) => {
+//   setError("");
+//   setSocialLoading(type);
+
+//   try {
+//     let result;
+
+//     if (type === "Google") {
+//       result = await signInWithGoogle();
+//     }
+
+//     if (type === "Facebook") {
+//       result = await signInWithFacebook();
+//     }
+
+//     if (type === "Apple") {
+//       result = await signInWithApple();
+//     }
+
+//     const idToken = await result.user.getIdToken();
+//     const data = await firebaseLogin(idToken);
+
+//     localStorage.setItem("authToken", data.token);
+//     localStorage.setItem("user", JSON.stringify(data.user));
+//     navigate("/dashboard");
+//   } catch (err) {
+//     setError(err.message || `${type} sign-in failed.`);
+//   } finally {
+//     setSocialLoading("");
+//   }
+// };
+
  const handleSocialLogin = async (type) => {
   setError("");
   setSocialLoading(type);
@@ -883,19 +915,20 @@ export default function Login() {
       result = await signInWithGoogle();
     }
 
-    if (type === "Facebook") {
-      result = await signInWithFacebook();
-    }
+    // if (type === "Facebook") {
+    //   result = await signInWithFacebook();
+    // }
 
-    if (type === "Apple") {
-      result = await signInWithApple();
-    }
+    // if (type === "Apple") {
+    //   result = await signInWithApple();
+    // }
 
     const idToken = await result.user.getIdToken();
     const data = await firebaseLogin(idToken);
 
     localStorage.setItem("authToken", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
+
     navigate("/dashboard");
   } catch (err) {
     setError(err.message || `${type} sign-in failed.`);
@@ -903,6 +936,7 @@ export default function Login() {
     setSocialLoading("");
   }
 };
+
 
 
   return (
@@ -1040,7 +1074,7 @@ export default function Login() {
                 Choose your preferred provider to continue quickly.
               </p>
 
-              <div className="my-8 flex items-center gap-3">
+              {/* <div className="my-8 flex items-center gap-3">
                 <div className="h-px flex-1 bg-slate-200" />
                 <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   social login
@@ -1100,7 +1134,35 @@ export default function Login() {
                   )}
                   <span className="font-medium">Continue with Apple</span>
                 </button>
+              </div> */}
+                            <div className="my-8 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  social login
+                </span>
+                <div className="h-px flex-1 bg-slate-200" />
               </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin()}
+                  disabled={socialLoading !== ""}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-slate-800 transition hover:bg-slate-50 disabled:opacity-70"
+                >
+                  {socialLoading === "Google" ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <img
+                      src="https://www.svgrepo.com/show/475656/google-color.svg"
+                      alt="Google"
+                      className="h-5 w-5"
+                    />
+                  )}
+                  <span className="font-medium">Continue with Google</span>
+                </button>
+              </div>
+
 
               <p className="mt-6 text-center text-sm text-slate-500">
                 Don&apos;t have an account?{" "}

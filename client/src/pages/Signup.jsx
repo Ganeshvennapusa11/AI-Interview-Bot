@@ -1287,8 +1287,8 @@ import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
 import {
   signInWithGoogle,
-  signInWithFacebook,
-  signInWithApple,
+  // signInWithFacebook,
+  // signInWithApple,
 } from "../firebase";
 import { registerUser, firebaseLogin } from "../services/api";
 
@@ -1426,25 +1426,44 @@ export default function Signup() {
     }
   };
 
- const handleSocialLogin = async (type) => {
+//  const handleSocialLogin = async (type) => {
+//   setSubmitError("");
+//   setSocialLoading(type);
+
+//   try {
+//     let result;
+
+//     if (type === "Google") {
+//       result = await signInWithGoogle();
+//     }
+
+//     if (type === "Facebook") {
+//       result = await signInWithFacebook();
+//     }
+
+//     if (type === "Apple") {
+//       result = await signInWithApple();
+//     }
+
+//     const idToken = await result.user.getIdToken();
+//     const data = await firebaseLogin(idToken);
+
+//     localStorage.setItem("authToken", data.token);
+//     localStorage.setItem("user", JSON.stringify(data.user));
+//     navigate("/dashboard");
+//   } catch (err) {
+//     setSubmitError(err.message || `${type} sign-in failed.`);
+//   } finally {
+//     setSocialLoading("");
+//   }
+// };
+
+const handleSocialLogin = async () => {
   setSubmitError("");
-  setSocialLoading(type);
+  setSocialLoading("Google");
 
   try {
-    let result;
-
-    if (type === "Google") {
-      result = await signInWithGoogle();
-    }
-
-    if (type === "Facebook") {
-      result = await signInWithFacebook();
-    }
-
-    if (type === "Apple") {
-      result = await signInWithApple();
-    }
-
+    const result = await signInWithGoogle();
     const idToken = await result.user.getIdToken();
     const data = await firebaseLogin(idToken);
 
@@ -1452,7 +1471,7 @@ export default function Signup() {
     localStorage.setItem("user", JSON.stringify(data.user));
     navigate("/dashboard");
   } catch (err) {
-    setSubmitError(err.message || `${type} sign-in failed.`);
+    setSubmitError(err.message || "Google sign-in failed.");
   } finally {
     setSocialLoading("");
   }
@@ -1714,7 +1733,7 @@ export default function Signup() {
             </p>
           </div>
 
-          <div className="w-full max-w-xs space-y-3 mt-6">
+          {/* <div className="w-full max-w-xs space-y-3 mt-6">
             {[
               {
                 name: "Google",
@@ -1753,7 +1772,32 @@ export default function Signup() {
                 </span>
               </MotionButton>
             ))}
+          </div> */}
+                    <div className="w-full max-w-xs space-y-3 mt-6">
+              <MotionButton
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                type="button"
+                onClick={() => handleSocialLogin()}
+                disabled={socialLoading !== ""}
+                className="w-full flex items-center justify-center gap-3 border border-slate-300 rounded-2xl py-3 bg-white hover:bg-slate-50 transition disabled:opacity-70"
+              >
+                {socialLoading === "Google" ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <img
+                    src="https://www.svgrepo.com/show/355037/google.svg"
+                    alt="Google"
+                    className="w-5 h-5"
+                  />
+                )}
+                <span className="text-slate-800 font-medium">
+                  Continue with Google
+                </span>
+              </MotionButton>
           </div>
+
         </MotionDiv>
       </div>
     </div>

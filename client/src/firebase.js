@@ -45,21 +45,21 @@ googleProvider.setCustomParameters({
   prompt: "select_account",
 });
 
-const facebookProvider = new FacebookAuthProvider();
+// const facebookProvider = new FacebookAuthProvider();
 
-const appleProvider = new OAuthProvider("apple.com");
-appleProvider.addScope("email");
-appleProvider.addScope("name");
+// const appleProvider = new OAuthProvider("apple.com");
+// appleProvider.addScope("email");
+// appleProvider.addScope("name");
 
 export async function signInWithGoogle() {
   return signInWithPopup(auth, googleProvider);
 }
 
-export async function signInWithFacebook() {
-  return signInWithPopup(auth, facebookProvider);
-}
+// export async function signInWithFacebook() {
+//   return signInWithPopup(auth, facebookProvider);
+// }
 
-export async function signInWithApple() {
-  return signInWithPopup(auth, appleProvider);
-}
+// export async function signInWithApple() {
+//   return signInWithPopup(auth, appleProvider);
+// }
 
