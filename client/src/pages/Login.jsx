@@ -809,12 +809,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
-import {
-  signInWithGoogle,
-  // signInWithFacebook,
-  // signInWithApple,
-} from "../firebase";
-import { loginUser, firebaseLogin } from "../services/api";
+// import {
+//   signInWithGoogle,
+//   // signInWithFacebook,
+//   // signInWithApple,
+// } from "../firebase";
+// import { loginUser, firebaseLogin } from "../services/api";
 
 const MotionDiv = motion.div;
 
@@ -904,38 +904,38 @@ export default function Login() {
 //   }
 // };
 
- const handleSocialLogin = async (type) => {
-  setError("");
-  setSocialLoading(type);
+//  const handleSocialLogin = async (type) => {
+//   setError("");
+//   setSocialLoading(type);
 
-  try {
-    let result;
+//   try {
+//     let result;
 
-    if (type === "Google") {
-      result = await signInWithGoogle();
-    }
+//     if (type === "Google") {
+//       result = await signInWithGoogle();
+//     }
 
-    // if (type === "Facebook") {
-    //   result = await signInWithFacebook();
-    // }
+//     // if (type === "Facebook") {
+//     //   result = await signInWithFacebook();
+//     // }
 
-    // if (type === "Apple") {
-    //   result = await signInWithApple();
-    // }
+//     // if (type === "Apple") {
+//     //   result = await signInWithApple();
+//     // }
 
-    const idToken = await result.user.getIdToken();
-    const data = await firebaseLogin(idToken);
+//     const idToken = await result.user.getIdToken();
+//     const data = await firebaseLogin(idToken);
 
-    localStorage.setItem("authToken", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
+//     localStorage.setItem("authToken", data.token);
+//     localStorage.setItem("user", JSON.stringify(data.user));
 
-    navigate("/dashboard");
-  } catch (err) {
-    setError(err.message || `${type} sign-in failed.`);
-  } finally {
-    setSocialLoading("");
-  }
-};
+//     navigate("/dashboard");
+//   } catch (err) {
+//     setError(err.message || `${type} sign-in failed.`);
+//   } finally {
+//     setSocialLoading("");
+//   }
+// };
 
 
 
@@ -1135,7 +1135,7 @@ export default function Login() {
                   <span className="font-medium">Continue with Apple</span>
                 </button>
               </div> */}
-                            <div className="my-8 flex items-center gap-3">
+                            {/* <div className="my-8 flex items-center gap-3">
                 <div className="h-px flex-1 bg-slate-200" />
                 <span className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   social login
@@ -1161,7 +1161,7 @@ export default function Login() {
                   )}
                   <span className="font-medium">Continue with Google</span>
                 </button>
-              </div>
+              </div> */}
 
 
               <p className="mt-6 text-center text-sm text-slate-500">

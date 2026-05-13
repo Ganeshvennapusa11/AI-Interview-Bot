@@ -1285,12 +1285,12 @@ import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Particles from "react-tsparticles";
 import { loadFull } from "tsparticles";
-import {
-  signInWithGoogle,
-  // signInWithFacebook,
-  // signInWithApple,
-} from "../firebase";
-import { registerUser, firebaseLogin } from "../services/api";
+// import {
+//   signInWithGoogle,
+//   // signInWithFacebook,
+//   // signInWithApple,
+// } from "../firebase";
+// import { registerUser, firebaseLogin } from "../services/api";
 
 const MotionDiv = motion.div;
 const MotionButton = motion.button;
@@ -1458,24 +1458,24 @@ export default function Signup() {
 //   }
 // };
 
-const handleSocialLogin = async () => {
-  setSubmitError("");
-  setSocialLoading("Google");
+// const handleSocialLogin = async () => {
+//   setSubmitError("");
+//   setSocialLoading("Google");
 
-  try {
-    const result = await signInWithGoogle();
-    const idToken = await result.user.getIdToken();
-    const data = await firebaseLogin(idToken);
+//   try {
+//     const result = await signInWithGoogle();
+//     const idToken = await result.user.getIdToken();
+//     const data = await firebaseLogin(idToken);
 
-    localStorage.setItem("authToken", data.token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-    navigate("/dashboard");
-  } catch (err) {
-    setSubmitError(err.message || "Google sign-in failed.");
-  } finally {
-    setSocialLoading("");
-  }
-};
+//     localStorage.setItem("authToken", data.token);
+//     localStorage.setItem("user", JSON.stringify(data.user));
+//     navigate("/dashboard");
+//   } catch (err) {
+//     setSubmitError(err.message || "Google sign-in failed.");
+//   } finally {
+//     setSocialLoading("");
+//   }
+// };
 
 
   return (
@@ -1773,7 +1773,7 @@ const handleSocialLogin = async () => {
               </MotionButton>
             ))}
           </div> */}
-                    <div className="w-full max-w-xs space-y-3 mt-6">
+                    {/* <div className="w-full max-w-xs space-y-3 mt-6">
               <MotionButton
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1796,7 +1796,7 @@ const handleSocialLogin = async () => {
                   Continue with Google
                 </span>
               </MotionButton>
-          </div>
+          </div> */}
 
         </MotionDiv>
       </div>
