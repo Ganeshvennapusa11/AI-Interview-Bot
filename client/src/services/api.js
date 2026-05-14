@@ -4,7 +4,7 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const api = axios.create({
   baseURL: `${API_BASE}/api`,
-  timeout: 20000,
+  timeout: 60000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -39,6 +39,13 @@ api.interceptors.response.use(
 
 export async function loginUser(credentials) {
   const response = await api.post("/user/login", credentials);
+  return response.data;
+}
+
+export async function wakeBackend() {
+  const response = await axios.get(API_BASE, {
+    timeout: 60000,
+  });
   return response.data;
 }
 

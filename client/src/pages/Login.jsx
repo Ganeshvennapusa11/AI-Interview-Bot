@@ -814,7 +814,7 @@ import { loadFull } from "tsparticles";
 //   // signInWithFacebook,
 //   // signInWithApple,
 // } from "../firebase";
-import { loginUser } from "../services/api";
+import { loginUser, wakeBackend } from "../services/api";
 
 const MotionDiv = motion.div;
 
@@ -826,6 +826,7 @@ export default function Login() {
   const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -833,6 +834,23 @@ export default function Login() {
       navigate("/dashboard");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsWakingServer(true);
+    wakeBackend()
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setIsWakingServer(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const validateForm = () => {
     const nextErrors = {};
@@ -973,6 +991,11 @@ export default function Login() {
               <p className="mt-2 text-sm leading-6 text-slate-500">
                 Log in to continue your interview preparation journey.
               </p>
+              {isWakingServer && (
+                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+                  Warming up the server. First request can take a little longer.
+                </p>
+              )}
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-5">
                 <div>

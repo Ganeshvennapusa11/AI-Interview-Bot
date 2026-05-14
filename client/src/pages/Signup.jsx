@@ -1290,7 +1290,7 @@ import { loadFull } from "tsparticles";
 //   // signInWithFacebook,
 //   // signInWithApple,
 // } from "../firebase";
-import { registerUser } from "../services/api";
+import { registerUser, wakeBackend } from "../services/api";
 
 const MotionDiv = motion.div;
 const MotionButton = motion.button;
@@ -1307,7 +1307,25 @@ export default function Signup() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isWakingServer, setIsWakingServer] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+
+    setIsWakingServer(true);
+    wakeBackend()
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) {
+          setIsWakingServer(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!profileFile) {
@@ -1529,6 +1547,11 @@ export default function Signup() {
           <p className="text-slate-600 mb-6">
             Start your journey with Interview Companion
           </p>
+          {isWakingServer && (
+            <p className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              Warming up the server. First request can take a little longer.
+            </p>
+          )}
 
           <form className="grid grid-cols-1 gap-5" onSubmit={handleSubmit}>
             <div className="flex flex-col items-center mb-2">
