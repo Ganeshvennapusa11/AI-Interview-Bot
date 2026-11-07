@@ -34,10 +34,12 @@ const MotionSection = motion.section;
 
 function getTrackFromParams(roleId) {
   if (!roleId) {
-    return roleTracks[0];
+    return { track: roleTracks[0], matched: true };
   }
 
-  return roleTrackMap[roleId.toUpperCase()] || roleTracks[0];
+  const track = roleTrackMap[roleId.toUpperCase()];
+
+  return { track: track || roleTracks[0], matched: Boolean(track) };
 }
 
 function SectionCard({ title, items, tone = "slate" }) {
@@ -75,7 +77,10 @@ export default function PreparationRoadmap() {
   const navigate = useNavigate();
   const { roleId } = useParams();
 
-  const activeTrack = useMemo(() => getTrackFromParams(roleId), [roleId]);
+  const { track: activeTrack, matched } = useMemo(
+    () => getTrackFromParams(roleId),
+    [roleId]
+  );
   const ActiveIcon = iconMap[activeTrack.icon] || Cpu;
 
   return (
@@ -93,6 +98,13 @@ export default function PreparationRoadmap() {
                 <Map size={15} />
                 Detailed preparation roadmap
               </div>
+
+              {!matched && (
+                <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  There is no roadmap for &quot;{roleId}&quot; yet, so this shows the{" "}
+                  {activeTrack.title} track instead.
+                </p>
+              )}
 
               <div className="mt-6 flex items-start gap-5">
                 <div className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] border border-slate-200 bg-slate-950 text-white shadow-sm">

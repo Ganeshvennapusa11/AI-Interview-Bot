@@ -6,13 +6,18 @@ server/node_modules/
 # Build and dist
 client/dist/
 server/uploads/
+server/eval/results/
 
 # Environment files
 server/.env
 client/.env
+!server/.env.example
 
 # Logs
 *.log
+
+# Local AI-generated review artifacts
+Claude outputs/
 
 # OS/system files
 .DS_Store

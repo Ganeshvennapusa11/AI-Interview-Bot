@@ -37,7 +37,14 @@ export default function Dashboard() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [roles, setRoles] = useState(roleTracks);
+  const [roles, setRoles] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("customRoles") || "[]");
+      return Array.isArray(saved) ? [...roleTracks, ...saved] : roleTracks;
+    } catch {
+      return roleTracks;
+    }
+  });
 
   const [newRole, setNewRole] = useState({
     id: "",
@@ -73,21 +80,34 @@ export default function Dashboard() {
       return;
     }
 
-    setRoles((prev) => [
-      ...prev,
-      {
-        ...newRole,
-        id: newRole.id.trim().toUpperCase(),
-        title: newRole.title.trim(),
-        desc: newRole.desc.trim() || "Custom technical interview track.",
-        exp: newRole.exp.trim() || "Custom",
-        qna: newRole.qna.trim() || "10 Q&A",
-        date: newRole.date.trim() || "25 Apr 2026",
-        skills: newRole.skills.trim() || "Custom skills",
-        category: newRole.category.trim() || "Custom",
-        icon: "Sparkles",
-      },
-    ]);
+    const customRole = {
+      ...newRole,
+      id: newRole.id.trim().toUpperCase(),
+      title: newRole.title.trim(),
+      desc: newRole.desc.trim() || "Custom technical interview track.",
+      exp: newRole.exp.trim() || "Custom",
+      qna: newRole.qna.trim() || "10 Q&A",
+      date: newRole.date.trim() || "25 Apr 2026",
+      skills: newRole.skills.trim() || "Custom skills",
+      category: newRole.category.trim() || "Custom",
+      icon: "Sparkles",
+      custom: true,
+    };
+
+    setRoles((prev) => {
+      const next = [...prev, customRole];
+
+      try {
+        localStorage.setItem(
+          "customRoles",
+          JSON.stringify(next.filter((role) => role.custom))
+        );
+      } catch {
+        // storage is full or blocked - the role still works for this session
+      }
+
+      return next;
+    });
 
     setShowModal(false);
     setShowToast(true);

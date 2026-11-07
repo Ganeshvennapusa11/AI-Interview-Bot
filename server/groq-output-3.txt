@@ -1,4 +1,0 @@
-Testing Groq API...
-Raw Response: {
-  "questions": ["What design patterns or libraries would you use to handle complex state management in a large-scale React application?"]
-}

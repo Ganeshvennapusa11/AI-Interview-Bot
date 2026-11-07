@@ -44,15 +44,23 @@ h1, h2, h3, h4, h5 {
 /* === Buttons === */
 button {
   border-radius: 8px;
-  border: none;
+  /* Width 0 keeps buttons borderless by default, but the style must stay
+     "solid" - "border: none" would kill border-style and silently defeat every
+     Tailwind border utility used on a button. */
+  border: 0 solid transparent;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.25s ease;
 }
+/* Keep a visible focus ring for keyboard users instead of removing it. */
 button:focus {
   outline: none;
+}
+button:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
 }
 
 /* === Animations === */

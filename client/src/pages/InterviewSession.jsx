@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import CodingRound from "../components/CodingRound.jsx";
+import { PERSONAS, DEFAULT_PERSONA } from "../data/personas.js";
+import { COMPANY_TIERS, getTierForCompany } from "../data/companyTiers.js";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -8,6 +11,7 @@ import {
   BadgeCheck,
   BrainCircuit,
   Building2,
+  Code2,
   Camera,
   CameraOff,
   Clock3,
@@ -34,7 +38,9 @@ import {
 } from "lucide-react";
 import {
   evaluateInterviewAnswer,
+  generateCodingChallenge,
   generateInterviewQuestions,
+  reviewCodingSubmission,
 } from "../services/api";
 
 const MotionDiv = motion.div;
@@ -63,7 +69,6 @@ const interviewModes = [
   { id: "rapid", label: "Rapid-fire", icon: Zap },
 ];
 
-const companies = ["General", "Google", "Amazon", "TCS", "Infosys"];
 const fillerWords = ["um", "uh", "like", "actually", "basically", "literally", "you know"];
 
 const SpeechRecognitionAPI =
@@ -121,6 +126,9 @@ export default function InterviewSession() {
   const recorderRef = useRef(null);
   const recordingStreamRef = useRef(null);
   const recordingChunksRef = useRef([]);
+  const recordedUrlRef = useRef("");
+  const modeRef = useRef("text");
+  const challengeRequestRef = useRef(0);
 
   const role =
     typeof state?.role === "string"
@@ -157,7 +165,46 @@ export default function InterviewSession() {
   const [mode, setMode] = useState("text");
   const [companyType, setCompanyType] = useState(state?.companyType || "General");
   const [adaptiveEnabled, setAdaptiveEnabled] = useState(true);
+  const [startDifficulty] = useState(() => {
+    const allowed = ["easy", "medium", "hard"];
+    const fromState = String(state?.difficulty || "").toLowerCase();
+    if (allowed.includes(fromState)) return fromState;
+
+    try {
+      const stored = JSON.parse(localStorage.getItem("interviewContext") || "{}");
+      const fromStorage = String(stored.difficulty || "").toLowerCase();
+      if (allowed.includes(fromStorage)) return fromStorage;
+    } catch {
+      // ignore unreadable stored context
+    }
+
+    return "medium";
+  });
   const [longPauseCount, setLongPauseCount] = useState(0);
+  const [loadError, setLoadError] = useState("");
+  const [persona, setPersona] = useState(() => {
+    if (PERSONAS.some((item) => item.id === state?.persona)) return state.persona;
+
+    try {
+      const stored = JSON.parse(localStorage.getItem("interviewContext") || "{}");
+      if (PERSONAS.some((item) => item.id === stored.persona)) return stored.persona;
+    } catch {
+      // ignore unreadable stored context
+    }
+
+    return DEFAULT_PERSONA;
+  });
+  const [codingMode, setCodingMode] = useState(false);
+  const [challenge, setChallenge] = useState(null);
+  const [challengeError, setChallengeError] = useState("");
+  const [isLoadingChallenge, setIsLoadingChallenge] = useState(false);
+  const [challengeToken, setChallengeToken] = useState(0);
+  const [challengeNotice, setChallengeNotice] = useState("");
+  const [roundMeta, setRoundMeta] = useState(null);
+  const [codingReview, setCodingReview] = useState(null);
+  const [codingDegraded, setCodingDegraded] = useState("");
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const currentQuestion = questions[currentIndex];
   const progress =
@@ -268,6 +315,7 @@ export default function InterviewSession() {
   useEffect(() => {
     async function loadQuestions() {
       setIsLoading(true);
+      setLoadError("");
 
       try {
         const data = await generateInterviewQuestions({
@@ -275,18 +323,23 @@ export default function InterviewSession() {
           roundType: activeRoundType,
           questionStyle: state?.questionStyle || "standard",
           companyType,
-          questionCount: mode === "rapid" ? 8 : 5,
-          difficulty: "easy",
+          persona,
+          questionCount: modeRef.current === "rapid" ? 8 : 5,
+          difficulty: startDifficulty,
           resumeText: state?.resumeText || "",
           parsedResume: state?.parsedResume || {},
         });
 
         setQuestions(data.questions || []);
+        setRoundMeta(data.meta || null);
         setCurrentIndex(0);
         setSessionAnswers([]);
       } catch (error) {
         console.error("Failed to load questions:", error);
         setQuestions([]);
+        setLoadError(
+          error.message || "Could not generate questions for this round."
+        );
       } finally {
         setIsLoading(false);
       }
@@ -296,9 +349,11 @@ export default function InterviewSession() {
   }, [
     activeRoundType,
     companyType,
-    mode,
+    persona,
+    reloadToken,
     role,
     state?.parsedResume,
+    startDifficulty,
     state?.questionStyle,
     state?.resumeText,
   ]);
@@ -310,6 +365,10 @@ export default function InterviewSession() {
 
     return () => window.clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
 
   useEffect(() => {
     if (mode === "video" && !cameraEnabled) {
@@ -347,14 +406,132 @@ export default function InterviewSession() {
   }, [cameraEnabled]);
 
   useEffect(() => {
+    recordedUrlRef.current = recordedUrl;
+  }, [recordedUrl]);
+
+  useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
       window.speechSynthesis?.cancel();
       cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
-      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      if (recordedUrlRef.current) URL.revokeObjectURL(recordedUrlRef.current);
     };
-  }, [recordedUrl]);
+  }, []);
+
+  const isCodingCapableRound = activeRoundType === "technical_1_dsa";
+
+  /**
+   * Fetch a challenge the first time the coding round is opened.
+   *
+   * The in-flight request is tracked by id rather than by a cleanup flag: the
+   * loading state must not be a dependency here, or setting it would re-run the
+   * effect and cancel the very request that set it.
+   */
+  useEffect(() => {
+    if (!codingMode || challenge) return;
+
+    const requestId = challengeRequestRef.current + 1;
+    challengeRequestRef.current = requestId;
+
+    setIsLoadingChallenge(true);
+    setChallengeError("");
+
+    (async () => {
+      try {
+        const data = await generateCodingChallenge({
+          role,
+          difficulty: startDifficulty,
+          companyType,
+          persona,
+          parsedResume: state?.parsedResume || {},
+        });
+
+        if (challengeRequestRef.current !== requestId) return;
+
+        if (!data?.challenge?.functionName) {
+          setChallengeError("The server returned an unusable challenge. Try again.");
+          return;
+        }
+
+        setChallenge(data.challenge);
+        setChallengeNotice(data.degraded ? data.degradedReason || "" : "");
+      } catch (error) {
+        if (challengeRequestRef.current !== requestId) return;
+        setChallengeError(error.message || "Could not load a coding challenge.");
+      } finally {
+        if (challengeRequestRef.current === requestId) setIsLoadingChallenge(false);
+      }
+    })();
+  }, [
+    codingMode,
+    challenge,
+    challengeToken,
+    companyType,
+    persona,
+    role,
+    startDifficulty,
+    state?.parsedResume,
+  ]);
+
+  const submitCodingSolution = async ({ code, run, language, executed }) => {
+    if (!challenge || (executed && !run?.ok)) return;
+
+    setIsReviewing(true);
+    setCodingDegraded("");
+
+    try {
+      const data = await reviewCodingSubmission({
+        challenge,
+        code,
+        language,
+        executed,
+        testSummary: executed ? run.summary : null,
+        complexity: executed ? run.complexity : null,
+        role,
+        persona,
+      });
+
+      setCodingReview(data.review);
+      if (data.degraded) setCodingDegraded(data.degradedReason || "");
+
+      const passRate =
+        executed && run.summary.total ? run.summary.passed / run.summary.total : 0;
+
+      setSessionAnswers((prev) => {
+        const next = [...prev];
+        next[currentIndex] = {
+          question: `[Coding] ${challenge.title}`,
+          answer: code,
+          feedback: data.review?.feedback || "",
+          evaluation: data.review || {},
+          rubric,
+          averageScore: executed
+            ? Math.round(passRate * 100)
+            : Math.round((data.review?.score?.overall || 0) * 10),
+          weakAreas:
+            executed && run.complexity && !run.complexity.confident ? ["complexity analysis"] : [],
+          strengths: data.review?.strengths || [],
+          fillerCount: 0,
+          longPauseCount: 0,
+          mode: "code",
+          companyType,
+        };
+        return next;
+      });
+    } catch (error) {
+      setCodingDegraded(error.message || "The review could not be generated.");
+    } finally {
+      setIsReviewing(false);
+    }
+  };
+
+  const startNextChallenge = () => {
+    setChallenge(null);
+    setCodingReview(null);
+    setCodingDegraded("");
+    setChallengeToken((token) => token + 1);
+  };
 
   const stopListening = () => {
     recognitionRef.current?.stop();
@@ -521,6 +698,14 @@ export default function InterviewSession() {
     }
   };
 
+  const clearRecordedUrl = () => {
+    if (recordedUrlRef.current) {
+      URL.revokeObjectURL(recordedUrlRef.current);
+      recordedUrlRef.current = "";
+    }
+    setRecordedUrl("");
+  };
+
   const stopRecording = () => {
     recorderRef.current?.stop();
     setIsRecording(false);
@@ -557,6 +742,7 @@ export default function InterviewSession() {
         roundType: activeRoundType,
         questionStyle: state?.questionStyle || "standard",
         companyType,
+        persona,
         questionCount: 1,
         difficulty: entry.averageScore >= 75 ? "hard" : entry.averageScore < 50 ? "easy" : "medium",
         resumeText: state?.resumeText || "",
@@ -596,11 +782,16 @@ export default function InterviewSession() {
         question: currentQuestion.question,
         answer,
         roundType: activeRoundType,
+        role,
       });
 
       const nextFeedback = {
         feedback: data.feedback || "Evaluation completed.",
         evaluation: data.evaluation || null,
+        baseline: data.baseline || null,
+        agreement: data.agreement || null,
+        gradedBy: data.gradedBy || "ai",
+        degradedReason: data.degradedReason || "",
       };
       setFeedback(nextFeedback);
       setShowFeedback(true);
@@ -652,7 +843,7 @@ export default function InterviewSession() {
       setFeedback(null);
       setShowFeedback(false);
       setLongPauseCount(0);
-      setRecordedUrl("");
+      clearRecordedUrl();
       setCurrentIndex((prev) => prev + 1);
       return;
     }
@@ -667,7 +858,7 @@ export default function InterviewSession() {
     setFeedback(null);
     setShowFeedback(false);
     setLongPauseCount(0);
-    setRecordedUrl("");
+    clearRecordedUrl();
   };
 
   const downloadReport = async () => {
@@ -787,7 +978,15 @@ export default function InterviewSession() {
 
           <div className="mt-4">
             <div className="mb-2 flex justify-between text-xs font-medium text-slate-500">
-              <span>Round 1 - {currentQuestion?.category || roundLabel}</span>
+              <span className="flex items-center gap-2">
+                Round 1 - {currentQuestion?.category || roundLabel}
+                {roundMeta?.difficulty && (
+                  <span className="rounded border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-slate-600">
+                    L{roundMeta.companyTier?.level} · {roundMeta.difficulty}
+                    {roundMeta.companyTier?.systemDesign ? " · system design" : ""}
+                  </span>
+                )}
+              </span>
               <span>
                 {questions.length > 0
                   ? `Question ${currentIndex + 1} of ${questions.length}`
@@ -805,7 +1004,7 @@ export default function InterviewSession() {
           </div>
         </header>
 
-        <section className="mb-6 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1.3fr_0.7fr_0.7fr]">
+        <section className="mb-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-[1.25fr_0.85fr_0.7fr_0.6fr]">
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
               Interview mode
@@ -828,7 +1027,41 @@ export default function InterviewSession() {
                   </button>
                 );
               })}
+
+              {isCodingCapableRound && (
+                <button
+                  onClick={() => setCodingMode((value) => !value)}
+                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold ${
+                    codingMode
+                      ? "bg-slate-950 text-white"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  <Code2 size={16} />
+                  Code
+                </button>
+              )}
             </div>
+          </div>
+
+          <div>
+            <label className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
+              Interviewer
+            </label>
+            <select
+              value={persona}
+              onChange={(event) => setPersona(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-slate-950"
+            >
+              {PERSONAS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-xs leading-4 text-slate-500">
+              {PERSONAS.find((item) => item.id === persona)?.tagline}
+            </p>
           </div>
 
           <div>
@@ -841,12 +1074,19 @@ export default function InterviewSession() {
               onChange={(event) => setCompanyType(event.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-bold text-slate-800 outline-none focus:border-slate-950"
             >
-              {companies.map((company) => (
-                <option key={company} value={company}>
-                  {company}
-                </option>
+              {COMPANY_TIERS.map((tier) => (
+                <optgroup key={tier.id} label={tier.label}>
+                  {tier.companies.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
+            <p className="mt-1.5 text-xs leading-4 text-slate-500">
+              {getTierForCompany(companyType).blurb}
+            </p>
           </div>
 
           <div>
@@ -867,7 +1107,43 @@ export default function InterviewSession() {
           </div>
         </section>
 
-        {isLoading ? (
+        {codingMode ? (
+          isLoadingChallenge ? (
+            <div className="rounded-md border border-slate-200 bg-white p-12 text-center">
+              <Loader2 className="mx-auto mb-4 animate-spin text-slate-950" size={30} />
+              <p className="text-sm font-medium text-slate-600">Writing a coding problem...</p>
+            </div>
+          ) : challengeError ? (
+            <div className="rounded-md border border-red-200 bg-white p-8 text-center">
+              <p className="font-medium text-slate-900">Could not load a coding challenge.</p>
+              <p className="mx-auto mt-2 max-w-xl text-sm text-red-600">{challengeError}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  challengeRequestRef.current += 1;
+                  setIsLoadingChallenge(false);
+                  setChallengeError("");
+                  setChallenge(null);
+                  setChallengeToken((token) => token + 1);
+                }}
+                className="mt-5 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                Try again
+              </button>
+            </div>
+          ) : (
+            <CodingRound
+              challenge={challenge}
+              onSubmit={submitCodingSolution}
+              isSubmitting={isReviewing}
+              submitted={Boolean(codingReview)}
+              review={codingReview}
+              degradedReason={codingDegraded}
+              notice={challengeNotice}
+              onNext={startNextChallenge}
+            />
+          )
+        ) : isLoading ? (
           <MotionDiv
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1213,27 +1489,80 @@ export default function InterviewSession() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -14 }}
-                      className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm"
+                      className="rounded-md border border-slate-200 bg-white p-5"
                     >
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-lg font-bold text-emerald-900">
-                          AI Feedback
-                        </h3>
-                        <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-bold text-emerald-700">
-                          <Gauge size={16} />
+                      <div className="mb-4 flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <p className="text-xs uppercase tracking-[0.14em] text-slate-500">
+                          Feedback
+                        </p>
+                        <span className="inline-flex items-center gap-2 font-mono text-sm tabular-nums text-slate-900">
+                          <Gauge size={14} className="text-slate-400" />
                           {averageScore}/100
                         </span>
                       </div>
-                      <p className="leading-7 text-emerald-950">
-                        {feedback.feedback}
-                      </p>
+
+                      {feedback.degradedReason && (
+                        <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                          {feedback.degradedReason}
+                        </p>
+                      )}
+
+                      <p className="leading-7 text-slate-700">{feedback.feedback}</p>
+
+                      {feedback.baseline && (
+                        <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] uppercase tracking-wide text-slate-500">
+                              Two graders, scored independently
+                            </p>
+                            {feedback.agreement && (
+                              <span
+                                className={`rounded border px-1.5 py-0.5 font-mono text-[10px] uppercase ${
+                                  feedback.agreement.verdict === "agree"
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                    : feedback.agreement.verdict === "close"
+                                      ? "border-slate-300 bg-white text-slate-600"
+                                      : "border-amber-300 bg-amber-50 text-amber-800"
+                                }`}
+                              >
+                                {feedback.agreement.verdict} · Δ {feedback.agreement.delta}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-2 grid grid-cols-2 gap-3 text-sm">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="text-slate-500">Language model</span>
+                              <span className="font-mono tabular-nums text-slate-900">
+                                {feedback.evaluation?.score?.overall ?? "-"}/10
+                              </span>
+                            </div>
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="text-slate-500">Deterministic</span>
+                              <span className="font-mono tabular-nums text-slate-900">
+                                {feedback.baseline.score}/10
+                              </span>
+                            </div>
+                          </div>
+
+                          {feedback.baseline.notes?.length > 0 && (
+                            <ul className="mt-3 space-y-1 border-t border-slate-200 pt-2 text-xs text-slate-600">
+                              {feedback.baseline.notes.slice(0, 3).map((note) => (
+                                <li key={note} className="font-mono">
+                                  {note}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
 
                       {feedback.evaluation?.strengths?.length > 0 && (
                         <div className="mt-4">
-                          <p className="text-sm font-bold text-emerald-900">
+                          <p className="text-[11px] uppercase tracking-wide text-slate-500">
                             Strengths
                           </p>
-                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-emerald-950">
+                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
                             {feedback.evaluation.strengths.map((item, index) => (
                               <li key={`${item}-${index}`}>{item}</li>
                             ))}
@@ -1243,10 +1572,10 @@ export default function InterviewSession() {
 
                       {feedback.evaluation?.improvements?.length > 0 && (
                         <div className="mt-4">
-                          <p className="text-sm font-bold text-emerald-900">
+                          <p className="text-[11px] uppercase tracking-wide text-slate-500">
                             Improvements
                           </p>
-                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-emerald-950">
+                          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
                             {feedback.evaluation.improvements.map((item, index) => (
                               <li key={`${item}-${index}`}>{item}</li>
                             ))}
@@ -1265,9 +1594,34 @@ export default function InterviewSession() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm"
           >
-            <p className="font-medium text-slate-600">
-              No questions available. Please try again.
+            <p className="font-medium text-slate-900">
+              {loadError
+                ? "We could not generate questions for this round."
+                : "No questions available for this round."}
             </p>
+
+            {loadError && (
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-rose-600">
+                {loadError}
+              </p>
+            )}
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setReloadToken((token) => token + 1)}
+                className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+              >
+                Try again
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard")}
+                className="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Back to dashboard
+              </button>
+            </div>
           </MotionDiv>
         )}
       </div>

@@ -1,6 +1,5 @@
 import fs from "fs/promises";
 import path from "path";
-import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 
 export async function parseResume(filePath, originalName = "") {
@@ -9,6 +8,16 @@ export async function parseResume(filePath, originalName = "") {
 
   if (extension === ".pdf") {
     let parser;
+    let PDFParse;
+
+    try {
+      ({ PDFParse } = await import("pdf-parse"));
+    } catch (error) {
+      console.error("PDF parser unavailable:", error.message);
+      throw new Error(
+        "PDF parsing is unavailable on this server. Please upload a DOCX or TXT resume."
+      );
+    }
 
     try {
       parser = new PDFParse({ data: buffer });

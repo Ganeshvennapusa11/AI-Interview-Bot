@@ -5,7 +5,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import { connectDB } from "./config.js";
+import { connectDB, isDBReady } from "./config.js";
 import userRoutes from "./routes/userRoutes.js";
 import interviewRoutes from "./routes/interviewRoutes.js";
 import resumeRoutes from "./routes/resumeRoutes.js";
@@ -13,9 +13,10 @@ import { protect } from "./middleware/authMiddleware.js";
 import { errorHandler, notFound } from "./middleware/errorHandler.js";
 import { interviewChat } from "./controllers/interviewController.js";
 
-connectDB();
-
 const app = express();
+
+// Required so express-rate-limit reads the real client IP behind Vercel/Render/Nginx.
+app.set("trust proxy", 1);
 
 const configuredOrigins = process.env.FRONTEND_URLS
   ? process.env.FRONTEND_URLS.split(",").map((origin) => origin.trim()).filter(Boolean)
@@ -90,6 +91,18 @@ app.use("/api/interview", aiLimiter, interviewRoutes);
 app.use("/api/resume", aiLimiter, resumeRoutes);
 app.post("/api/chat", protect, aiLimiter, interviewChat);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/ready", (req, res) => {
+  if (!isDBReady()) {
+    return res.status(503).json({ status: "starting" });
+  }
+
+  return res.status(200).json({ status: "ready" });
+});
+
 app.get("/", (req, res) => {
   res.send("AI Interview Bot Backend is running successfully!");
 });
@@ -99,6 +112,15 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+const startServer = async () => {
+  await connectDB();
+
+  app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
+  });
+};
+
+startServer().catch((error) => {
+  console.error("Startup failed:", error.message);
+  process.exit(1);
 });

@@ -6,16 +6,17 @@ import {
   Upload,
   Download,
   ArrowLeft,
-  Brain,
-  Briefcase,
-  Heart,
+  ArrowRight,
+  Code2,
+  MessagesSquare,
+  Users,
   RotateCcw,
   CheckCircle2,
   AlertTriangle,
   TrendingUp,
   ClipboardList,
   Search,
-  Rocket,
+  ListChecks,
 } from "lucide-react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { uploadResume } from "../services/api";
@@ -202,11 +203,13 @@ export default function UploadResume() {
 
   const startInterview = (round) => {
     const roundType = roundTypeMap[round] || round;
+    const difficulty = "medium";
     const context = {
-      role: roleTitle,
+      role: selectedRole,
+      roleId: roleTitle || state?.role?.id || "",
       roleLabel: selectedRole,
       roundType,
-      difficulty: "medium",
+      difficulty,
       questionStyle,
       parsedResume: analysis?.parsedResume || {},
     };
@@ -219,6 +222,7 @@ export default function UploadResume() {
         round,
         roundType,
         questionStyle,
+        difficulty,
         resumeText: analysis?.resumeText || "",
         parsedResume: analysis?.parsedResume || {},
       },
@@ -535,7 +539,7 @@ export default function UploadResume() {
 
               <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 className="mb-3 flex items-center gap-2 font-bold text-slate-950">
-                  <Rocket size={18} /> Suggested improvements
+                  <ListChecks size={18} /> Suggested improvements
                 </h3>
                 <div className="grid gap-3 md:grid-cols-2">
                   {analysis.suggestions?.map((s, i) => (
@@ -554,27 +558,37 @@ export default function UploadResume() {
                   Start targeted practice
                 </h3>
                 <div className="grid gap-3 md:grid-cols-3">
-                  <MotionButton
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => startInterview("technical")}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-4 font-bold text-white hover:bg-blue-700"
-                  >
-                    <Brain size={18} /> Technical
-                  </MotionButton>
-                  <MotionButton
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => startInterview("managerial")}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-4 font-bold text-white hover:bg-indigo-700"
-                  >
-                    <Briefcase size={18} /> Managerial
-                  </MotionButton>
-                  <MotionButton
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => startInterview("hr")}
-                    className="flex items-center justify-center gap-2 rounded-2xl bg-pink-600 px-4 py-4 font-bold text-white hover:bg-pink-700"
-                  >
-                    <Heart size={18} /> HR
-                  </MotionButton>
+                  {[
+                    { id: "technical", label: "Technical", note: "DSA, fundamentals, code", icon: Code2 },
+                    { id: "managerial", label: "Managerial", note: "Ownership, prioritisation", icon: Users },
+                    { id: "hr", label: "HR", note: "Motivation, collaboration", icon: MessagesSquare },
+                  ].map((round) => {
+                    const RoundIcon = round.icon;
+
+                    return (
+                      <MotionButton
+                        key={round.id}
+                        whileTap={{ scale: 0.99 }}
+                        onClick={() => startInterview(round.id)}
+                        className="group flex items-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.06)] transition hover:border-slate-900 hover:shadow-[0_2px_6px_rgba(15,23,42,0.10)]"
+                      >
+                        <RoundIcon
+                          size={17}
+                          className="shrink-0 text-slate-500 transition group-hover:text-slate-900"
+                        />
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-slate-900">
+                            {round.label}
+                          </span>
+                          <span className="block text-xs leading-4 text-slate-500">{round.note}</span>
+                        </span>
+                        <ArrowRight
+                          size={15}
+                          className="ml-auto shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-slate-900"
+                        />
+                      </MotionButton>
+                    );
+                  })}
                 </div>
               </section>
             </div>

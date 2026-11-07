@@ -1,30 +1,13 @@
-import groq from "./groqService.js";
-
-function extractJsonString(raw = "") {
-  const trimmed = raw.trim();
-
-  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    return trimmed;
-  }
-
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    return trimmed.slice(firstBrace, lastBrace + 1);
-  }
-
-  return trimmed;
-}
-
-function safeParseJSON(raw, fallback = {}) {
-  try {
-    return JSON.parse(extractJsonString(raw));
-  } catch (error) {
-    console.error("AI JSON parse failed:", raw?.slice(0, 300));
-    return fallback;
-  }
-}
+import { createChatCompletion } from "./groqService.js";
+import { safeParseJSON } from "./jsonUtils.js";
+import {
+  containsNormalizedTerm,
+  getKeywordAliases,
+  getRoleExpectedKeywords,
+  normalizeToken,
+} from "./textAnalysis.js";
+import { getPersona, getStrictnessGuidance } from "./personas.js";
+import { getTierGuidance, getTierQuestionRules } from "./companyTiers.js";
 
 function getRoundStrategy(roundType) {
   const map = {
@@ -118,246 +101,9 @@ function normalizeQuestions(items = []) {
     .filter((item) => item.question);
 }
 
-function normalizeToken(value = "") {
-  return String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9+#./\s-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
-function containsNormalizedTerm(text = "", term = "") {
-  const normalizedText = ` ${normalizeToken(text)} `;
-  const normalizedTerm = ` ${normalizeToken(term)} `;
-  return normalizedText.includes(normalizedTerm);
-}
 
-function getKeywordAliases(keyword = "") {
-  const aliasMap = {
-    "data structures": ["data structures", "dsa", "ds&a", "ds a"],
-    algorithms: ["algorithms", "algorithm", "dsa", "ds&a", "ds a"],
-    "c++": ["c++", "cpp", "c plus plus"],
-    oop: ["oop", "oops", "object oriented programming", "object-oriented programming"],
-    dbms: ["dbms", "database management system", "database management systems"],
-    apis: ["api", "apis", "rest api", "rest apis", "backend api"],
-    "operating systems": ["operating systems", "operating system", "os"],
-    networking: ["networking", "computer networks", "cn"],
-    "problem solving": ["problem solving", "problem-solving", "competitive programming"],
-    "system design": ["system design", "hld", "lld", "design systems"],
-    javascript: ["javascript", "js"],
-    typescript: ["typescript", "ts"],
-    html: ["html", "html5"],
-    css: ["css", "css3"],
-    tailwind: ["tailwind", "tailwindcss"],
-    testing: ["testing", "jest", "unit testing", "integration testing"],
-    node: ["node", "nodejs", "node.js"],
-    express: ["express", "expressjs", "express.js"],
-    rest: ["rest", "rest api", "restful api"],
-    mongodb: ["mongodb", "mongo"],
-    postgresql: ["postgresql", "postgres", "psql"],
-    redis: ["redis", "caching"],
-    authentication: ["authentication", "auth", "jwt", "oauth"],
-    deployment: ["deployment", "deployed", "hosting", "production release"],
-    "machine learning": ["machine learning", "ml"],
-    "deep learning": ["deep learning", "dl"],
-    pytorch: ["pytorch", "torch"],
-    tensorflow: ["tensorflow", "tf"],
-    transformers: ["transformers", "huggingface"],
-    nlp: ["nlp", "natural language processing"],
-    llm: ["llm", "large language model", "large language models"],
-    evaluation: ["evaluation", "model evaluation"],
-    "data preprocessing": ["data preprocessing", "preprocessing", "data cleaning"],
-    "model deployment": ["model deployment", "deploying models", "serving models"],
-    "vector database": ["vector database", "vector db", "vectordb"],
-    linux: ["linux", "ubuntu", "bash"],
-    kubernetes: ["kubernetes", "k8s"],
-    docker: ["docker", "containerization", "containers"],
-    aws: ["aws", "amazon web services"],
-    monitoring: ["monitoring", "grafana", "prometheus"],
-    observability: ["observability", "logging", "tracing", "metrics"],
-    "incident response": ["incident response", "incident management", "on-call"],
-    terraform: ["terraform", "iac", "infrastructure as code"],
-    slo: ["slo", "service level objective"],
-    sli: ["sli", "service level indicator"],
-    "ci/cd": ["ci/cd", "cicd", "continuous integration", "continuous deployment"],
-    "internal tooling": ["internal tooling", "developer tooling", "tooling"],
-    automation: ["automation", "scripting", "auto-remediation"],
-    "developer experience": ["developer experience", "devex"],
-    infrastructure: ["infrastructure", "infra", "cloud infrastructure"],
-    owasp: ["owasp", "application security"],
-    iam: ["iam", "identity and access management"],
-    "threat modeling": ["threat modeling", "threat model"],
-    appsec: ["appsec", "application security"],
-    "cloud security": ["cloud security", "secure cloud"],
-    siem: ["siem", "security monitoring"],
-    authorization: ["authorization", "access control", "rbac"],
-    "network security": ["network security", "firewall", "secure networking"],
-    "cloud computing": ["cloud computing", "cloud"],
-    "distributed systems": ["distributed systems", "distributed system"],
-    "agile methodologies": ["agile methodologies", "agile", "scrum", "kanban"],
-  };
 
-  return aliasMap[keyword] || [keyword];
-}
-
-function getRoleExpectedKeywords(role = "") {
-  const normalizedRole = normalizeToken(role);
-
-  const roleProfiles = [
-    {
-      matchers: ["software development engineer", "sde", "software engineer", "swe"],
-      keywords: [
-        "data structures",
-        "algorithms",
-        "java",
-        "c++",
-        "python",
-        "oop",
-        "dbms",
-        "sql",
-        "operating systems",
-        "networking",
-        "apis",
-        "system design",
-        "problem solving",
-      ],
-    },
-    {
-      matchers: ["frontend", "front end", "ui engineer"],
-      keywords: [
-        "react",
-        "javascript",
-        "typescript",
-        "html",
-        "css",
-        "tailwind",
-        "redux",
-        "responsive",
-        "accessibility",
-        "performance",
-        "apis",
-        "testing",
-      ],
-    },
-    {
-      matchers: ["backend"],
-      keywords: [
-        "node",
-        "express",
-        "java",
-        "spring",
-        "python",
-        "django",
-        "flask",
-        "rest",
-        "apis",
-        "microservices",
-        "sql",
-        "mongodb",
-        "postgresql",
-        "redis",
-        "authentication",
-      ],
-    },
-    {
-      matchers: ["full stack", "fullstack"],
-      keywords: [
-        "react",
-        "javascript",
-        "typescript",
-        "node",
-        "express",
-        "sql",
-        "mongodb",
-        "apis",
-        "authentication",
-        "deployment",
-        "state management",
-        "testing",
-      ],
-    },
-    {
-      matchers: ["ai / ml", "ai", "ml", "machine learning"],
-      keywords: [
-        "python",
-        "machine learning",
-        "deep learning",
-        "pytorch",
-        "tensorflow",
-        "transformers",
-        "nlp",
-        "llm",
-        "evaluation",
-        "data preprocessing",
-        "model deployment",
-        "vector database",
-      ],
-    },
-    {
-      matchers: ["site reliability", "sre"],
-      keywords: [
-        "linux",
-        "kubernetes",
-        "docker",
-        "aws",
-        "monitoring",
-        "observability",
-        "incident response",
-        "terraform",
-        "slo",
-        "sli",
-        "ci/cd",
-        "networking",
-      ],
-    },
-    {
-      matchers: ["platform"],
-      keywords: [
-        "ci/cd",
-        "docker",
-        "kubernetes",
-        "aws",
-        "terraform",
-        "internal tooling",
-        "automation",
-        "developer experience",
-        "observability",
-        "infrastructure",
-      ],
-    },
-    {
-      matchers: ["security"],
-      keywords: [
-        "owasp",
-        "iam",
-        "threat modeling",
-        "appsec",
-        "cloud security",
-        "siem",
-        "incident response",
-        "authentication",
-        "authorization",
-        "network security",
-      ],
-    },
-  ];
-
-  for (const profile of roleProfiles) {
-    if (profile.matchers.some((matcher) => normalizedRole.includes(matcher))) {
-      return profile.keywords;
-    }
-  }
-
-  return [
-    "problem solving",
-    "api",
-    "sql",
-    "testing",
-    "debugging",
-    "deployment",
-    "git",
-  ];
-}
 
 function computeResumeHeuristic(role, parsedResume = {}, resumeText = "") {
   const expectedKeywords = getRoleExpectedKeywords(role);
@@ -485,6 +231,7 @@ function mergeResumeInsights(aiInsights = {}, role, resumeText = "") {
 }
 
 export const generateAIQuestions = async ({
+  persona: personaId,
   role,
   roundType,
   experienceLevel = "Fresher",
@@ -537,6 +284,12 @@ Round Strategy: ${getRoundStrategy(roundType)}
 Style Guidance: ${getQuestionStyleGuidance(questionStyle)}
 Company Guidance: ${getCompanyInterviewGuidance(companyType)}
 
+${getTierGuidance(companyType)}
+
+You are ${getPersona(personaId).label} (${getPersona(personaId).company}).
+Interviewer style: ${getPersona(personaId).questionGuidance}
+Stay in character. Never mention that you are following a persona.
+
 Candidate Skills: ${skills.join(", ") || "Not provided"}
 Candidate Projects: ${projects.join(" | ") || "Not provided"}
 Candidate Internships: ${internships.join(" | ") || "Not provided"}
@@ -549,6 +302,9 @@ Adaptive Context:
 - Last Answer Score: ${lastScore}
 - Previous Strengths: ${previousStrengths || "None"}
 - Weak Areas To Probe Next: ${previousWeakAreas || "None"}
+
+Tier rules (these override the generic ordering rules below when they conflict):
+${getTierQuestionRules(companyType)}
 
 Rules:
 - Tailor the questions to the target role and the candidate context.
@@ -583,8 +339,7 @@ Rules:
 }
 `.trim();
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+  const completion = await createChatCompletion({
     messages: [
       {
         role: "system",
@@ -594,7 +349,7 @@ Rules:
     ],
     response_format: { type: "json_object" },
     temperature: 0.7,
-    max_tokens: 1800,
+    max_tokens: 2600,
   });
 
   const result = safeParseJSON(completion.choices[0]?.message?.content, {
@@ -604,14 +359,66 @@ Rules:
   return normalizeQuestions(result.questions);
 };
 
-export const evaluateAIAnswer = async ({ question, answer, roundType = "technical_1_dsa" }) => {
+/**
+ * Prompt variants for the answer grader.
+ * The evaluation harness (npm run eval) measures these against author-labelled
+ * scores, so changing the default should be an evidence-based decision.
+ */
+export const EVALUATION_VARIANTS = ["v1_plain", "v2_rubric_anchored", "v3_few_shot"];
+
+export const DEFAULT_EVALUATION_VARIANT =
+  process.env.EVAL_PROMPT_VARIANT && EVALUATION_VARIANTS.includes(process.env.EVAL_PROMPT_VARIANT)
+    ? process.env.EVAL_PROMPT_VARIANT
+    : "v1_plain";
+
+const RUBRIC_ANCHORS = `
+Score anchors (be literal about these):
+- 0-2: no relevant content, or the answer misses what was asked.
+- 3-4: names the right topic but stays vague; no mechanism, example or evidence.
+- 5-6: correct and on topic with some explanation, but shallow: no numbers, no tradeoffs, thin edge cases.
+- 7-8: correct, structured, with a concrete example or measurement and at least one tradeoff acknowledged.
+- 9-10: everything in 7-8 plus depth a strong hire would show: precise reasoning, limits of the approach, and what they would do differently.
+`.trim();
+
+const FEW_SHOT_EXAMPLES = `
+Example A
+Question: How would you speed up a slow API endpoint?
+Answer: "I would probably add caching or something, maybe look at the database."
+Correct evaluation: overall 3. Names plausible directions but no diagnosis, no mechanism, no evidence.
+
+Example B
+Question: How would you speed up a slow API endpoint?
+Answer: "First I would measure: add timing around the handler and check the DB plan. On our orders endpoint the N+1 query was 80% of the 900ms. I batched the lookups into one query and it dropped to 120ms. I did not cache, because the data changes per request and a stale cache would be worse than 120ms."
+Correct evaluation: overall 9. Measures before fixing, quantifies impact, and justifies rejecting an obvious alternative.
+`.trim();
+
+export const buildEvaluationPrompt = ({
+  question,
+  answer,
+  roundType = "technical_1_dsa",
+  variant = DEFAULT_EVALUATION_VARIANT,
+  personaId,
+}) => {
   const isBehavioral = roundType.includes("hr") || roundType.includes("managerial");
+  const persona = getPersona(personaId);
 
-  const prompt = `
-You are a strict but fair interviewer.
+  const sections = [
+    `You are ${persona.label}, a strict but fair interviewer.`,
+    persona.evaluationGuidance,
+    getStrictnessGuidance(persona),
+  ];
 
+  if (variant === "v2_rubric_anchored" || variant === "v3_few_shot") {
+    sections.push(RUBRIC_ANCHORS);
+  }
+
+  if (variant === "v3_few_shot") {
+    sections.push(FEW_SHOT_EXAMPLES);
+  }
+
+  sections.push(`
 Question: ${question}
-Candidate Answer: ${answer.trim().slice(0, 1600)}
+Candidate Answer: ${String(answer).trim().slice(0, 1600)}
 Round Type: ${roundType}
 
 Return valid JSON only:
@@ -628,20 +435,30 @@ Return valid JSON only:
   "idealAnswerPoints": ["string"],
   "followUpQuestion": "string"
 }
-`.trim();
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+All scores are integers from 0 to 10.`);
+
+  return sections.join("\n\n").trim();
+};
+
+export const evaluateAIAnswer = async ({
+  question,
+  answer,
+  roundType = "technical_1_dsa",
+  variant = DEFAULT_EVALUATION_VARIANT,
+  personaId,
+}) => {
+  const completion = await createChatCompletion({
     messages: [
       {
         role: "system",
         content: "You are an expert interviewer. Respond with valid JSON only.",
       },
-      { role: "user", content: prompt },
+      { role: "user", content: buildEvaluationPrompt({ question, answer, roundType, variant, personaId }) },
     ],
     response_format: { type: "json_object" },
     temperature: 0.3,
-    max_tokens: 1100,
+    max_tokens: 1500,
   });
 
   return safeParseJSON(completion.choices[0]?.message?.content, {
@@ -698,8 +515,7 @@ Scoring rules:
 - Reserve scores below 40 for resumes with very weak alignment or very limited relevant evidence.
 `.trim();
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+  const completion = await createChatCompletion({
     messages: [
       {
         role: "system",
@@ -709,7 +525,7 @@ Scoring rules:
     ],
     response_format: { type: "json_object" },
     temperature: 0.3,
-    max_tokens: 1200,
+    max_tokens: 2600,
   });
 
   const aiInsights = safeParseJSON(completion.choices[0]?.message?.content, {
@@ -763,8 +579,7 @@ Rules:
 - Be concise, practical, and supportive.
 `.trim();
 
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
+  const completion = await createChatCompletion({
     messages: [
       {
         role: "system",
@@ -774,7 +589,7 @@ Rules:
       { role: "user", content: prompt },
     ],
     temperature: 0.5,
-    max_tokens: 500,
+    max_tokens: 700,
   });
 
   return (

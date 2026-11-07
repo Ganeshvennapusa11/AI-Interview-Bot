@@ -1,7 +1,6 @@
 import crypto from "crypto";
 import User from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
-import { verifyFirebaseToken } from "../services/firebaseAdmin.js";
 import {
   sendAccountCreatedEmail,
   sendPasswordResetEmail,
@@ -14,6 +13,18 @@ const isStrongPassword = (password = "") =>
   /[a-z]/.test(password) &&
   /[0-9]/.test(password) &&
   /[^A-Za-z0-9]/.test(password);
+
+const MAX_AVATAR_LENGTH = 300000;
+
+// Accept a small inline image or a plain URL; ignore anything else rather than
+// failing the whole registration.
+const sanitizeAvatar = (value = "") => {
+  const avatar = typeof value === "string" ? value.trim() : "";
+
+  if (!avatar || avatar.length > MAX_AVATAR_LENGTH) return "";
+
+  return /^(data:image\/(png|jpe?g|webp);base64,|https?:\/\/)/i.test(avatar) ? avatar : "";
+};
 
 const serializeUser = (user) => ({
   id: user._id,
@@ -57,6 +68,7 @@ export const registerUser = async (req, res) => {
       name,
       email,
       password,
+      avatar: sanitizeAvatar(req.body.avatar),
     });
 
     sendAccountCreatedEmail({ to: email, name }).catch((error) => {
@@ -197,50 +209,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-export const firebaseLogin = async (req, res) => {
-  try {
-    const idToken = req.body.idToken;
-
-    if (!idToken) {
-      return res.status(400).json({ message: "Firebase ID token is required" });
-    }
-
-    const decoded = await verifyFirebaseToken(idToken);
-    const email = decoded.email?.toLowerCase();
-
-    if (!email) {
-      return res.status(400).json({ message: "Firebase account email is missing" });
-    }
-
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      user = await User.create({
-        name: decoded.name || email.split("@")[0],
-        email,
-        password: `FirebaseAuth!${decoded.uid}`,
-        avatar: decoded.picture || "",
-      });
-
-      sendAccountCreatedEmail({ to: email, name: user.name }).catch((error) => {
-        console.error("Account email failed:", error.message);
-      });
-    } else if (!user.avatar && decoded.picture) {
-      user.avatar = decoded.picture;
-      await user.save();
-    }
-
-    return res.json({
-      message: "Firebase login successful",
-      token: generateToken(user._id),
-      user: serializeUser(user),
-    });
-  } catch (error) {
-    console.error("Firebase login error:", error);
-    return res.status(401).json({ message: "Firebase authentication failed" });
-  }
-};
-
 export const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
@@ -269,7 +237,8 @@ export const updateProfile = async (req, res) => {
 
     const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
     const about = typeof req.body.about === "string" ? req.body.about.trim() : user.about;
-    const avatar = typeof req.body.avatar === "string" ? req.body.avatar.trim() : user.avatar;
+    const avatar =
+      typeof req.body.avatar === "string" ? sanitizeAvatar(req.body.avatar) : user.avatar;
 
     if (name) {
       user.name = name;

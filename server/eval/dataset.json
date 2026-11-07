@@ -1,0 +1,441 @@
+{
+  "name": "interview-answer-grading-v1",
+  "description": "Author-labelled interview answers used to measure the AI grader against a deterministic baseline.",
+  "scale": "0-10, using the rubric anchors documented in eval/README.md",
+  "labelledBy": "project author (single annotator)",
+  "itemCount": 48,
+  "items": [
+    {
+      "id": "001",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "Explain the difference between useState and useRef in React.",
+      "answer": "They are both hooks in React that store things.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "002",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "Explain the difference between useState and useRef in React.",
+      "answer": "useState stores state and useRef stores a reference. useState causes a re-render when it changes but useRef does not.",
+      "humanScore": 4,
+      "tier": "weak"
+    },
+    {
+      "id": "003",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "Explain the difference between useState and useRef in React.",
+      "answer": "useState holds a value that is part of the render output, so setting it schedules a re-render. useRef holds a mutable box that survives renders but changing .current does not re-render. I use useRef for things like a DOM node or a timer id.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "004",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "Explain the difference between useState and useRef in React.",
+      "answer": "Both persist across renders, but they differ in what React does when they change. useState is part of the render cycle: calling the setter schedules a re-render, and the value is snapshotted per render, which is why a stale closure can read an old value. useRef gives a mutable container that React never watches, so writing to .current is invisible to rendering. So state is for anything the UI displays, refs are for things the UI does not depend on, like a DOM handle, an interval id, or the previous value of a prop. If I put a scroll position in state I would re-render on every scroll event, so that belongs in a ref.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "005",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you improve the load time of a React page that renders 5,000 rows?",
+      "answer": "I would try to make the code faster and maybe use a better computer.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "006",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you improve the load time of a React page that renders 5,000 rows?",
+      "answer": "I would use pagination or lazy loading so it does not render everything at once. Maybe also memo.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "007",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you improve the load time of a React page that renders 5,000 rows?",
+      "answer": "First I would check whether all 5,000 rows need to be in the DOM. Usually not, so I would virtualise the list and render only the visible window. I would also memoise the row component so unrelated state changes do not re-render every row.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "008",
+      "role": "Frontend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you improve the load time of a React page that renders 5,000 rows?",
+      "answer": "I would measure before changing anything: a React Profiler trace tells me whether the cost is in the initial mount, in re-renders, or in the network. Assuming it is mount cost, 5,000 DOM nodes is the problem, so I would virtualise and render roughly 30 visible rows, which took a table I worked on from about 1.9s to under 200ms. Then memoise rows with stable keys and hoist the callbacks so a parent state change does not invalidate every row. The tradeoff with virtualisation is that in-page search and print break unless handled separately, so if the page is mainly used for printing I would paginate on the server instead.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "009",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you optimise a slow database query?",
+      "answer": "I would add caching or something to make it faster.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "010",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you optimise a slow database query?",
+      "answer": "I would look at the query and add an index on the columns used in the where clause. Indexes make lookups faster.",
+      "humanScore": 4,
+      "tier": "weak"
+    },
+    {
+      "id": "011",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you optimise a slow database query?",
+      "answer": "I would run EXPLAIN to see the execution plan and look for a sequential scan or a bad join order. Usually a missing index on the filtered column is the cause, so I would add one and re-check the plan. I would also avoid selecting columns I do not need.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "012",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "How would you optimise a slow database query?",
+      "answer": "I start with EXPLAIN ANALYZE so I am fixing what the planner actually does rather than what I assume. On a reporting endpoint in my project the plan showed a sequential scan over 400k orders because created_at had no index; a composite index on (status, created_at) took it from about 2.4s to 60ms. Before adding it I checked write volume, because every index makes inserts slower and this table is write-heavy at checkout. If the query had been fine and the endpoint still slow, the next suspect is N+1 queries in the ORM rather than the SQL itself.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "013",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is idempotency and why does it matter for a payments API?",
+      "answer": "Idempotency is when the API is safe. It matters because payments are important.",
+      "humanScore": 0,
+      "tier": "poor"
+    },
+    {
+      "id": "014",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is idempotency and why does it matter for a payments API?",
+      "answer": "It means calling the same request twice gives the same result. For payments it stops double charging.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "015",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is idempotency and why does it matter for a payments API?",
+      "answer": "An idempotent operation can be repeated without changing the outcome beyond the first application. In payments this matters because a client may retry after a timeout without knowing whether the first call succeeded. You usually pass an idempotency key so the server recognises the retry and returns the original result instead of charging again.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "016",
+      "role": "Backend Engineer",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is idempotency and why does it matter for a payments API?",
+      "answer": "Idempotency means N identical requests leave the system in the same state as one. It matters because the network can fail after the server committed but before the client saw the response, so the client cannot tell a lost response from a lost request and must retry. The standard approach is a client-generated idempotency key stored with the result of the first attempt; a retry with the same key returns the stored response rather than creating a second charge. The subtle parts are storing the key in the same transaction as the charge, otherwise a crash between them reopens the hole, and expiring keys so the table does not grow forever. GET and PUT are naturally idempotent, POST is not, which is exactly why payment POSTs need the key.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "017",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "How would you find the first non-repeating character in a string?",
+      "answer": "I would loop through the string and check each character to see if it repeats.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "018",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "How would you find the first non-repeating character in a string?",
+      "answer": "Use two loops, for each character check if it appears again later in the string. If not, return it. It is O(n squared) but it works.",
+      "humanScore": 4,
+      "tier": "weak"
+    },
+    {
+      "id": "019",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "How would you find the first non-repeating character in a string?",
+      "answer": "Count the frequency of every character in one pass using a hash map, then walk the string again and return the first character with a count of one. That is O(n) time and O(k) space where k is the alphabet size.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "020",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "How would you find the first non-repeating character in a string?",
+      "answer": "Two passes over the string with a frequency map: first pass counts, second pass returns the first character whose count is one. That is O(n) time and O(k) space for the character set, which beats the naive O(n squared) double loop. If the string were huge and mostly unique I could store the first index alongside the count and skip the second pass, though for ASCII a 128-slot array is faster than a map because there is no hashing. Edge cases are the empty string and a string where everything repeats, both of which should return null rather than throwing.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "021",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "When would you use a hash map instead of an array?",
+      "answer": "Hash maps are faster than arrays so I use them when I need speed.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "022",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "When would you use a hash map instead of an array?",
+      "answer": "When I need to look things up by a key instead of an index. Arrays are for ordered lists, maps are for key value pairs.",
+      "humanScore": 4,
+      "tier": "weak"
+    },
+    {
+      "id": "023",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "When would you use a hash map instead of an array?",
+      "answer": "When lookups are by key rather than position. Array search is O(n) unless it is sorted, while a hash map is O(1) on average. I would still use an array when order matters or when I am iterating everything anyway.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "024",
+      "role": "Software Development Engineer",
+      "roundType": "technical_1_dsa",
+      "question": "When would you use a hash map instead of an array?",
+      "answer": "When the access pattern is 'do I have this key' rather than 'what is at this position'. A map gives average O(1) lookup versus O(n) scanning an array, which is why the two-sum problem drops from quadratic to linear with one. But it is not free: hashing costs constant time per operation, the map has memory overhead per entry, and iteration order is not positional. For a small fixed set, say fewer than about 20 items, a linear scan over an array is usually faster in practice because it is cache friendly.",
+      "humanScore": 8,
+      "tier": "strong"
+    },
+    {
+      "id": "025",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "How do you handle class imbalance in a classification problem?",
+      "answer": "I would collect more data for the smaller class.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "026",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "How do you handle class imbalance in a classification problem?",
+      "answer": "You can oversample the minority class or undersample the majority class. SMOTE is also an option.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "027",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "How do you handle class imbalance in a classification problem?",
+      "answer": "First stop using accuracy, because a 99 to 1 split gets 99% by predicting the majority. I would look at precision, recall and PR-AUC instead, then try class weights in the loss before resampling, since weighting does not throw away data.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "028",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "How do you handle class imbalance in a classification problem?",
+      "answer": "The first fix is the metric: accuracy is meaningless at 99 to 1, so I move to precision, recall and PR-AUC, chosen by which error actually costs more. Then I try class weights in the loss, because that keeps all the data, and only reach for resampling if that is not enough. If I do resample, it must happen inside the cross-validation folds, otherwise synthetic minority points leak into validation and the score is optimistic. Finally I tune the decision threshold on a validation set rather than leaving it at 0.5, since for fraud detection recall at a tolerable false-positive rate matters more than a balanced F1.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "029",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is overfitting and how would you detect it?",
+      "answer": "Overfitting is when the model is too good at the data.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "030",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is overfitting and how would you detect it?",
+      "answer": "When the model memorises the training data and does not generalise. You detect it by checking the test accuracy is lower than the training accuracy.",
+      "humanScore": 4,
+      "tier": "weak"
+    },
+    {
+      "id": "031",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is overfitting and how would you detect it?",
+      "answer": "The model fits noise in the training set, so training error keeps dropping while validation error stops improving. I detect it by holding out a validation set and watching the gap, and I control it with regularisation, simpler models, or early stopping.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "032",
+      "role": "Data Scientist",
+      "roundType": "technical_2_fundamentals",
+      "question": "What is overfitting and how would you detect it?",
+      "answer": "Overfitting is when the model captures noise specific to the training sample, so training loss keeps falling while validation loss flattens and then rises. I detect it with a learning curve on a held-out split, or k-fold if the dataset is small, and I look at the size of the gap rather than either number alone. Fixes in the order I try them are more data, then regularisation such as L2 or dropout, then early stopping, then a simpler model. The trap is tuning hyperparameters against the test set, because then the test set is training data too and the reported number is optimistic, which is why I keep a third split I only look at once.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "033",
+      "role": "DevOps Engineer",
+      "roundType": "technical_2_projects",
+      "question": "A deployment fails at 2am and the site is down. Walk me through what you do.",
+      "answer": "I would fix the bug and deploy again.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "034",
+      "role": "DevOps Engineer",
+      "roundType": "technical_2_projects",
+      "question": "A deployment fails at 2am and the site is down. Walk me through what you do.",
+      "answer": "I would check the logs to find the error and then push a fix as fast as possible so the site comes back up.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "035",
+      "role": "DevOps Engineer",
+      "roundType": "technical_2_projects",
+      "question": "A deployment fails at 2am and the site is down. Walk me through what you do.",
+      "answer": "First restore service, then diagnose. That usually means rolling back to the last known good release rather than debugging in production. Once the site is up I look at logs and metrics to find the cause and write it up so it does not happen again.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "036",
+      "role": "DevOps Engineer",
+      "roundType": "technical_2_projects",
+      "question": "A deployment fails at 2am and the site is down. Walk me through what you do.",
+      "answer": "Recovery first, root cause second: I roll back to the last good release before I investigate anything, because every minute spent debugging is downtime. Then I confirm recovery with the actual health signal, error rate and latency, not just that the deploy went green. Once stable I pull logs from the failed window and diff the release to find the cause. Afterwards I write a blameless postmortem with a timeline and one concrete action item, which in our case was that the migration was not backward compatible, so we added a rule that schema changes ship one release ahead of the code that uses them.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "037",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a time you disagreed with a teammate.",
+      "answer": "I do not really have disagreements, I get along with everyone on my team.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "038",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a time you disagreed with a teammate.",
+      "answer": "A teammate wanted to use a different library than me. We discussed it and in the end we used his choice and the project was completed successfully.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "039",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a time you disagreed with a teammate.",
+      "answer": "On a college project a teammate wanted to store everything in one big table while I wanted separate tables. I explained that queries would get slow and hard to change, we tried both on a small sample, and we went with the normalised version. It worked out and we stayed on good terms.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "040",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a time you disagreed with a teammate.",
+      "answer": "On our final year project a teammate wanted to keep all data in one denormalised collection because it was quicker to write. I thought it would hurt us later, but rather than argue from opinion I asked what we were optimising for and we agreed the deciding factor was the reporting screen. We each built the query both ways on a 10,000 row sample: his was 40 lines of application-side joining, mine was one aggregate that ran in 20ms. Seeing the numbers ended the debate in about ten minutes. What I took from it is that disagreements about design usually stall because nobody has agreed on the criterion, and the fastest way through is a cheap experiment rather than a longer argument.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "041",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a project you are proud of.",
+      "answer": "I made a website using React and it was really good and I learned a lot from it.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "042",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a project you are proud of.",
+      "answer": "I built an interview preparation app with React and Node. It has login, resume upload and a chatbot. I am proud of it because it was my biggest project.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "043",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a project you are proud of.",
+      "answer": "I built an AI interview preparation app. The part I am proud of is the resume parser: it pulls skills and projects out of a PDF and uses them to generate role-specific questions. The hardest part was handling PDFs with multiple columns, which broke my first text extraction approach.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "044",
+      "role": "Software Development Engineer",
+      "roundType": "hr",
+      "question": "Tell me about a project you are proud of.",
+      "answer": "An AI interview preparation platform I built end to end. The piece I am proud of is not the AI, it is the grading: I did not trust a language model to score answers consistently, so I built a deterministic scorer from keyword coverage, structure and evidence signals, then measured how closely the model agreed with 48 answers I scored by hand. The model was about 1.2 points off on average, and both scorers agreed on the ranking, which told me the AI was usable for feedback but not for a hard pass or fail. That measurement changed the product: the app now shows both scores. I also kept the deterministic scorer wired in as a fallback, so the app still grades when the API is down.",
+      "humanScore": 9,
+      "tier": "strong"
+    },
+    {
+      "id": "045",
+      "role": "Software Development Engineer",
+      "roundType": "managerial",
+      "question": "How do you prioritise when everything is urgent?",
+      "answer": "I make a to do list and finish the tasks one by one as fast as I can.",
+      "humanScore": 1,
+      "tier": "poor"
+    },
+    {
+      "id": "046",
+      "role": "Software Development Engineer",
+      "roundType": "managerial",
+      "question": "How do you prioritise when everything is urgent?",
+      "answer": "I would ask my manager which one is most important and start with that one, then do the rest in order.",
+      "humanScore": 3,
+      "tier": "weak"
+    },
+    {
+      "id": "047",
+      "role": "Software Development Engineer",
+      "roundType": "managerial",
+      "question": "How do you prioritise when everything is urgent?",
+      "answer": "I separate urgent from important. Anything blocking other people or affecting users goes first because the cost of waiting is highest, then I sequence the rest by impact and tell whoever is waiting what they will not get today.",
+      "humanScore": 6,
+      "tier": "okay"
+    },
+    {
+      "id": "048",
+      "role": "Software Development Engineer",
+      "roundType": "managerial",
+      "question": "How do you prioritise when everything is urgent?",
+      "answer": "I make the tradeoff explicit instead of trying to do everything. I sort by cost of delay: what breaks, for how many people, if this waits until tomorrow. Anything blocking another person outranks my own work because their idle time compounds. Then I go back to whoever asked and say what will slip and by when, since silent deprioritising is what actually damages trust. When three things genuinely tie I escalate with a recommendation rather than an open question, because my manager can accept a proposal in thirty seconds but arbitrating a list takes them an hour.",
+      "humanScore": 8,
+      "tier": "strong"
+    }
+  ]
+}

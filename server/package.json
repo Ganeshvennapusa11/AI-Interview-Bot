@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "test": "node --check src/server.js && node --check src/config.js && node --check src/controllers/interviewController.js && node --check src/controllers/resumeController.js && node --check src/controllers/userController.js && node --check src/middleware/authMiddleware.js && node --check src/middleware/errorHandler.js && node --check src/models/User.js && node --check src/routes/interviewRoutes.js && node --check src/routes/resumeRoutes.js && node --check src/routes/userRoutes.js && node --check src/services/emailService.js && node --check src/services/firebaseAdmin.js && node --check src/services/groqService.js && node --check src/services/openaiService.js && node --check src/utils/generateToken.js && node --check src/utils/parseResume.js && node --check test-db.js && node --check test-groq.js && node --check test-openai.js"
+    "dev": "node --watch src/server.js",
+    "test": "node scripts/syntax-check.js",
+    "check:groq": "node scripts/check-groq.js",
+    "eval": "node eval/run-eval.js",
+    "lint": "node ../client/node_modules/eslint/bin/eslint.js src scripts eval"
   },
   "keywords": [
     "AI",
@@ -21,20 +24,15 @@
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
-    "express": "^5.1.0",
+    "express": "^5.3.0",
     "express-rate-limit": "^7.4.1",
-    "firebase-admin": "^13.8.0",
     "groq-sdk": "^0.36.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.8.0",
     "mongoose": "^8.19.1",
-    "multer": "^2.0.2",
-    "nodemailer": "^8.0.7",
-    "openai": "^4.104.0",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.3.1",
     "pdf-parse": "^2.4.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.10"
   }
 }

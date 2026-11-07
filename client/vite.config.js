@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: "./", // ensures correct asset paths when deployed
+  base: "/", // absolute paths so deep links (/reset-password/:token) load assets correctly
   server: {
     port: 5173, // optional: define local dev port
   },
@@ -14,15 +14,14 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return undefined;
-          if (id.includes("react") || id.includes("scheduler")) return "react";
-          if (id.includes("firebase")) return "firebase";
+          if (id.includes("tsparticles")) return "particles";
+          if (id.includes("lucide-react")) return "icons";
           if (id.includes("framer-motion")) return "motion";
           if (id.includes("jspdf")) return "pdf";
           if (id.includes("html2canvas")) return "html2canvas";
           if (id.includes("dompurify")) return "dompurify";
-          if (id.includes("tsparticles")) return "particles";
-          if (id.includes("three")) return "three";
-          if (id.includes("lucide-react")) return "icons";
+          if (id.includes("axios")) return "http";
+          if (id.includes("react") || id.includes("scheduler")) return "react";
           return "vendor";
         },
       },
